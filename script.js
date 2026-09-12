@@ -68,6 +68,7 @@ const titlesData = [
 
 // Oyun Durum Değişkenleri
 let score = 0;
+let correctCountInRun = 0; // Bu turda bilinen doğru sayısı
 let lives = 3;
 let highScore = localStorage.getItem("ntl_highscore") || 0;
 let userAge = localStorage.getItem("ntl_user_age") || null;
@@ -86,35 +87,86 @@ let timerInterval = null;
 
 let hasFiftyFifty = true;
 let hasExtraTime = true;
-let hasPickCategory = true;
+let hasPickCategoryUsed = false;
 
-// Ses Motoru (Web Audio API)
+// ==========================================
+// SES MOTORU (ZENGİN DOĞRU/YANLIŞ VE DİNAMİK ÇARK)
+// ==========================================
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
-function playBeep(freq = 440, duration = 0.1) {
+
+function getAudioContext() {
+    if (!audioCtx) audioCtx = new AudioContext();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+
+// Çark Tık Sesi
+function playWheelClickSound() {
     try {
-        if (!audioCtx) audioCtx = new AudioContext();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.value = freq;
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(520, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(120, ctx.currentTime + 0.04);
+        gain.gain.setValueAtTime(0.08, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
         osc.connect(gain);
-        gain.connect(audioCtx.destination);
+        gain.connect(ctx.destination);
         osc.start();
-        osc.stop(audioCtx.currentTime + duration);
+        osc.stop(ctx.currentTime + 0.04);
+    } catch(e) {}
+}
+
+// Neşeli, Mutlu Doğru Cevap Melodisi
+function playCorrectVictorySound() {
+    try {
+        const ctx = getAudioContext();
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (Büyük Başarı Akoru)
+        notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = "sine";
+            osc.frequency.value = freq;
+            const startTime = ctx.currentTime + idx * 0.09;
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.18, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 0.35);
+        });
+    } catch(e) {}
+}
+
+// Belirleyici Yanlış Cevap Sesi (Düşük Bas Uyarısı)
+function playWrongSound() {
+    try {
+        const ctx = getAudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(180, ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(90, ctx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
     } catch(e) {}
 }
 
 // ==========================================
-// 2. AÇILIŞ VE İLK KURULUM YÖNETİMİ
+// 2. AÇILIŞ VE İLK KURULUM
 // ==========================================
 
 window.addEventListener("DOMContentLoaded", () => {
     document.getElementById("display-highscore").textContent = highScore;
     document.getElementById("user-name").textContent = userName;
-    document.getElementById("current-title-badge").textContent = equippedTitle;
+    updateBadgeUI();
 
     setTimeout(() => {
         const splash = document.getElementById("splash-screen");
@@ -123,7 +175,7 @@ window.addEventListener("DOMContentLoaded", () => {
             splash.style.display = "none";
             checkOnboarding();
         }, 500);
-    }, 1800);
+    }, 2000);
 });
 
 function checkOnboarding() {
@@ -140,11 +192,8 @@ function setAgeGroup(age) {
     userAge = age;
     localStorage.setItem("ntl_user_age", age);
     closeModal("age-modal");
-    if (!userAuth) {
-        openModal("auth-modal");
-    } else {
-        showMainGame();
-    }
+    if (!userAuth) openModal("auth-modal");
+    else showMainGame();
 }
 
 function finishAuth(provider) {
@@ -156,32 +205,30 @@ function finishAuth(provider) {
 
 function showMainGame() {
     document.getElementById("main-game").style.display = "flex";
+    updatePickerButtonUI();
 }
 
 // ==========================================
-// 3. ÇARK DÖNDÜRME MEKANİZMASI
+// 3. GELİŞMİŞ ÇARK & YAVAŞLAYAN SES MEKANİZMASI
 // ==========================================
 
 function startSpin() {
     if (isSpinning) return;
-    playBeep(300, 0.05);
     const randomIndex = Math.floor(Math.random() * categories.length);
     spinToTargetIndex(randomIndex);
 }
 
 function openCategoryPicker() {
-    if (!hasPickCategory || isSpinning) return;
+    if (isSpinning || hasPickCategoryUsed || correctCountInRun < 3) return;
     openModal("modal-category-picker");
 }
 
 function spinToCategory(catName) {
     closeModal("modal-category-picker");
-    if (!hasPickCategory || isSpinning) return;
+    if (isSpinning || hasPickCategoryUsed) return;
 
-    hasPickCategory = false;
-    const btn = document.getElementById("pick-category-button");
-    btn.classList.add("used");
-    btn.textContent = "🎯 Kategori Seç (Kullanıldı)";
+    hasPickCategoryUsed = true;
+    updatePickerButtonUI();
 
     const targetIdx = categories.findIndex(c => c.name === catName);
     spinToTargetIndex(targetIdx);
@@ -201,24 +248,49 @@ function spinToTargetIndex(index) {
     const wheel = document.getElementById("wheel");
     wheel.style.transform = `rotate(${currentRotation}deg)`;
 
-    // Çark sesi efekti
-    let tickCount = 0;
-    const tickInterval = setInterval(() => {
-        playBeep(400 + tickCount * 15, 0.03);
-        tickCount++;
-        if (tickCount > 18) clearInterval(tickInterval);
-    }, 150);
+    // ÇARK YAVAŞLADIKÇA SESİN DE YAVAŞLAMASI (Gerçekçi Tıklama)
+    let totalSpinTime = 3400;
+    let clickDelays = [];
+    let elapsed = 0;
+    let currentInterval = 70; // Başlangıç hızı (çok hızlı tık tık)
+
+    while (elapsed < totalSpinTime) {
+        clickDelays.push(elapsed);
+        let progress = elapsed / totalSpinTime; // 0 ile 1 arası
+        currentInterval = 70 + Math.pow(progress, 3) * 350; // Kübik olarak yavaşlar
+        elapsed += currentInterval;
+    }
+
+    clickDelays.forEach(delay => {
+        setTimeout(() => {
+            playWheelClickSound();
+        }, delay);
+    });
 
     setTimeout(() => {
         isSpinning = false;
         document.getElementById("spin-button").disabled = false;
         document.getElementById("pick-category-button").disabled = false;
         openQuizScreen();
-    }, 3500);
+    }, 3600);
+}
+
+function updatePickerButtonUI() {
+    const btn = document.getElementById("pick-category-button");
+    if (hasPickCategoryUsed) {
+        btn.className = "btn-picker used";
+        btn.textContent = "🎯 Kategori Seç (Kullanıldı)";
+    } else if (correctCountInRun >= 3) {
+        btn.className = "btn-picker unlocked";
+        btn.textContent = "🎯 Kategori Seç (AÇIK)";
+    } else {
+        btn.className = "btn-picker locked";
+        btn.textContent = `🔒 Kategori Seç (${correctCountInRun}/3 Doğru)`;
+    }
 }
 
 // ==========================================
-// 4. SORU VE CAN YÖNETİMİ
+// 4. SORU VE CEVAP YÖNETİMİ
 // ==========================================
 
 function openQuizScreen() {
@@ -229,7 +301,6 @@ function openQuizScreen() {
     catTag.textContent = currentCategoryObj.name;
     catTag.style.backgroundColor = currentCategoryObj.color;
 
-    // Soru seç
     const list = questionBank[currentCategoryObj.name];
     currentQuestion = list[Math.floor(Math.random() * list.length)];
 
@@ -261,6 +332,7 @@ function startQuestionTimer() {
 
         if (timer <= 0) {
             clearInterval(timerInterval);
+            playWrongSound();
             loseLife();
             revealCorrectAnswer();
         }
@@ -274,9 +346,10 @@ function handleAnswer(selectedIdx) {
 
     if (selectedIdx === currentQuestion.a) {
         // DOĞRU CEVAP
-        playBeep(650, 0.2);
+        playCorrectVictorySound();
         optButtons[selectedIdx].classList.add("correct");
         score += 10;
+        correctCountInRun++;
         document.getElementById("display-score").textContent = score;
 
         if (score > highScore) {
@@ -285,15 +358,15 @@ function handleAnswer(selectedIdx) {
             document.getElementById("display-highscore").textContent = highScore;
         }
 
-        // İlerleme & Unvan Kontrolü
         categoryProgress[currentCategoryObj.name] = (categoryProgress[currentCategoryObj.name] || 0) + 1;
         localStorage.setItem("ntl_cat_prog", JSON.stringify(categoryProgress));
         checkTitleUnlocks();
+        updatePickerButtonUI();
 
         document.getElementById("quiz-next-button").style.display = "block";
     } else {
         // YANLIŞ CEVAP
-        playBeep(180, 0.3);
+        playWrongSound();
         optButtons[selectedIdx].classList.add("wrong");
         revealCorrectAnswer();
         loseLife();
@@ -320,11 +393,8 @@ function loseLife() {
 function updateLivesUI() {
     const hearts = document.querySelectorAll("#lives-display .heart-icon");
     hearts.forEach((h, idx) => {
-        if (idx >= lives) {
-            h.classList.add("lost");
-        } else {
-            h.classList.remove("lost");
-        }
+        if (idx >= lives) h.classList.add("lost");
+        else h.classList.remove("lost");
     });
 }
 
@@ -342,7 +412,6 @@ function useFiftyFifty() {
     hasFiftyFifty = false;
     const btn = document.getElementById("lifeline-fifty");
     btn.classList.add("used");
-    playBeep(500, 0.1);
 
     const wrongIndexes = [];
     currentQuestion.o.forEach((_, idx) => {
@@ -360,7 +429,6 @@ function useExtraTime() {
     hasExtraTime = false;
     const btn = document.getElementById("lifeline-time");
     btn.classList.add("used");
-    playBeep(500, 0.1);
 
     timer += 10;
     document.getElementById("quiz-timer").textContent = timer;
@@ -368,7 +436,7 @@ function useExtraTime() {
 }
 
 // ==========================================
-// 6. OYUN BİTTİ VE YENİDEN BAŞLATMA
+// 6. OYUN BİTTİ VE SIFIRLAMA
 // ==========================================
 
 function showGameOver() {
@@ -382,27 +450,30 @@ function showGameOver() {
 
 function restartGame() {
     score = 0;
+    correctCountInRun = 0;
     lives = 3;
     hasFiftyFifty = true;
     hasExtraTime = true;
-    hasPickCategory = true;
+    hasPickCategoryUsed = false;
 
     document.getElementById("display-score").textContent = "0";
     updateLivesUI();
+    updatePickerButtonUI();
 
     document.getElementById("lifeline-fifty").classList.remove("used");
     document.getElementById("lifeline-time").classList.remove("used");
-    const pickBtn = document.getElementById("pick-category-button");
-    pickBtn.classList.remove("used");
-    pickBtn.textContent = "🎯 Kategori Seç";
 
     document.getElementById("screen-gameover").style.display = "none";
     document.getElementById("screen-wheel").style.display = "flex";
 }
 
 // ==========================================
-// 7. UNVANLAR VE AYARLAR
+// 7. UNVANLAR & AYARLAR
 // ==========================================
+
+function updateBadgeUI() {
+    document.getElementById("badge-text").textContent = equippedTitle;
+}
 
 function checkTitleUnlocks() {
     let totalCorrect = Object.values(categoryProgress).reduce((a, b) => a + b, 0);
@@ -447,7 +518,7 @@ function openTitlesModal() {
 function equipTitle(titleName) {
     equippedTitle = titleName;
     localStorage.setItem("ntl_equipped_title", titleName);
-    document.getElementById("current-title-badge").textContent = titleName;
+    updateBadgeUI();
     openTitlesModal();
 }
 
@@ -474,6 +545,5 @@ function saveSettings() {
     closeModal("modal-settings");
 }
 
-// Modal Yardımcıları
 function openModal(id) { document.getElementById(id).style.display = "flex"; }
 function closeModal(id) { document.getElementById(id).style.display = "none"; }

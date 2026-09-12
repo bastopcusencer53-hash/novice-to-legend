@@ -15,19 +15,24 @@
     <canvas id="confetti-canvas"></canvas>
 
     <div id="splash-screen" class="splash-container">
+        <div class="splash-glow"></div>
         <div class="splash-logo-box">
-            <img src="novice to legend görsel.png" alt="Logo" class="splash-img" onerror="this.src='icon.png'">
+            <img src="novice to legend görsel.png" alt="Quiz Logo" class="splash-img" onerror="this.src='icon.png'">
         </div>
         <h1 class="splash-title">NOVICE TO LEGEND</h1>
-        <p class="splash-subtitle">Bilgi Yarışması Macerası</p>
-        <div class="splash-loader"><div class="splash-bar"></div></div>
+        <p class="splash-subtitle">BİLGİ YARIŞMASI</p>
+        
+        <div class="splash-loading-wrap">
+            <span class="splash-loading-text">Yükleniyor...</span>
+            <div class="splash-loader"><div class="splash-bar"></div></div>
+        </div>
     </div>
 
     <div id="age-modal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-icon">🎂</div>
-            <h2>Yaş Aralığınızı Seçin</h2>
-            <p>Size en uygun soru deneyimini sunalım.</p>
+            <h2>Yaş Aralığınız</h2>
+            <p>Size uygun soruları getirebilmemiz için seçin:</p>
             <div class="modal-btn-grid">
                 <button class="choice-btn" onclick="setAgeGroup('under13')">13 Yaş Altı</button>
                 <button class="choice-btn" onclick="setAgeGroup('13-18')">13 - 18 Yaş</button>
@@ -41,7 +46,7 @@
         <div class="modal-box">
             <div class="modal-icon">🔐</div>
             <h2>Giriş Yap</h2>
-            <p>İlerlemenizi kaydetmek için bir hesap seçin.</p>
+            <p>İlerlemenizin kaydedilmesi için bir hesap seçin:</p>
             <div class="modal-btn-list">
                 <button class="auth-btn google-btn" onclick="finishAuth('Google')">🌐 Google ile Giriş Yap</button>
                 <button class="auth-btn apple-btn" onclick="finishAuth('Apple')">🍏 Apple ile Giriş Yap</button>
@@ -64,37 +69,37 @@
                     <span class="heart-icon">❤️</span>
                     <span class="heart-icon">❤️</span>
                 </div>
-                <button class="icon-round-btn" onclick="openTitlesModal()" title="Unvanlar">📜</button>
                 <button class="icon-round-btn" onclick="openSettingsModal()" title="Ayarlar">⚙️</button>
             </div>
         </header>
 
         <div class="title-section">
             <h1 class="main-title">NOVICE TO LEGEND</h1>
-            <div id="current-title-badge" class="title-badge">[Çaylak]</div>
+            <div id="current-title-badge" class="title-badge clickable-title" onclick="openTitlesModal()">
+                <span id="badge-text">[Çaylak]</span> <span style="font-size:10px; opacity:0.8;">📜 Değiştir</span>
+            </div>
         </div>
 
         <section id="screen-wheel" class="screen-box">
             <div class="wheel-area">
                 <div class="wheel-pointer"></div>
-                <div id="wheel" class="wheel-disc">
-                    </div>
+                <div id="wheel" class="wheel-disc"></div>
                 <div class="wheel-hub">🎯</div>
             </div>
 
             <div class="action-grid">
                 <button id="spin-button" class="btn-spin" onclick="startSpin()">ÇARKI ÇEVİR</button>
-                <button id="pick-category-button" class="btn-picker" onclick="openCategoryPicker()">🎯 Kategori Seç</button>
+                <button id="pick-category-button" class="btn-picker locked" onclick="openCategoryPicker()">🔒 Kategori Seç (0/3 Doğru)</button>
             </div>
 
             <div class="stats-row">
-                <div class="stat-card">
+                <div class="stat-card score-card">
                     <span class="stat-label">PUAN</span>
-                    <span id="display-score" class="stat-value">0</span>
+                    <span id="display-score" class="stat-value highlight-score">0</span>
                 </div>
-                <div class="stat-card">
+                <div class="stat-card mini-highscore-card">
                     <span class="stat-label">REKOR</span>
-                    <span id="display-highscore" class="stat-value">0</span>
+                    <span id="display-highscore" class="stat-value mini-record">0</span>
                 </div>
             </div>
         </section>
@@ -110,7 +115,7 @@
             </div>
 
             <div class="question-box">
-                <p id="quiz-question-text">Soru hazırlanıyor...</p>
+                <p id="quiz-question-text">Soru yükleniyor...</p>
             </div>
 
             <div class="options-container" id="quiz-options-wrapper">
@@ -132,14 +137,14 @@
             <div class="gameover-card">
                 <div class="gameover-icon">💀</div>
                 <h2>Oyun Bitti!</h2>
-                <p>Tüm canlarınız tükendi.</p>
+                <p>Canlarınız tükendi.</p>
                 
                 <div class="gameover-score-box">
-                    <div>Toplam Skor: <strong id="go-score">0</strong></div>
-                    <div>En Yüksek Skor: <strong id="go-highscore">0</strong></div>
+                    <div>Bu Oyundaki Puan: <strong id="go-score">0</strong></div>
+                    <div>En Yüksek Rekor: <strong id="go-highscore">0</strong></div>
                 </div>
 
-                <button class="btn-restart" onclick="restartGame()">Yeniden Başla 🔄</button>
+                <button class="btn-restart" onclick="restartGame()">Tekrar Oyna 🔄</button>
             </div>
         </section>
 
@@ -163,8 +168,8 @@
 
     <div id="modal-titles" class="modal-overlay">
         <div class="modal-box">
-            <h2>📜 Unvanlar</h2>
-            <p>Başarılar kazandıkça yeni unvanlar açılır.</p>
+            <h2>📜 Unvan Koleksiyonu</h2>
+            <p>Doğru cevaplar verdikçe yeni unvanlar kazanırsın.</p>
             <div id="titles-container" class="titles-list"></div>
             <button class="modal-btn-cancel" onclick="closeModal('modal-titles')">Kapat</button>
         </div>
