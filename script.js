@@ -330,20 +330,343 @@ function startQuestionTimer() {
     timer = 15;
     const timerEl = document.getElementById("quiz-timer");
     const bar = document.getElementById("quiz-progress-bar");
-    if (timerEl) timerEl.textContent = timer;
+    if (timerEl) timerEl.textContent = String(timer);
     if (bar) bar.style.width = "100%";
 
-    clearInterval(timerInterval);
+    if (timerInterval) clearInterval(timerInterval);
     timerInterval = setInterval(() => {
         timer--;
-        if (timerEl) timerEl.textContent = timer;
+        if (timerEl) timerEl.textContent = String(timer);
         if (bar) bar.style.width = `${(timer / 15) * 100}%`;
 
         if (timer <= 0) {
-            clearInterval(timerInterval);
+            if (timerInterval) clearInterval(timerInterval);
             playWrongSound();
             loseLife();
             revealCorrectAnswer();
         }
     }, 1000);
 }
+
+function handleAnswer(selectedIdx) {
+    if (timerInterval) clearInterval(timerInterval);
+    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
+    optButtons.forEach(btn => btn.setAttribute("disabled", "true"));
+
+    if (currentQuestion && selectedIdx === currentQuestion.a) {
+        playCorrectVictorySound();
+        if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("correct");
+        score += 10;
+        correctCountInRun++;
+        const scoreEl = document.getElementById("display-score");
+        if (scoreEl) scoreEl.textContent = String(score);
+
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("ntl_highscore", String(highScore));
+            const hsEl = document.getElementById("display-highscore");
+            if (hsEl) hsEl.textContent = String(highScore);
+        }
+
+        if (currentCategoryObj) {
+            categoryProgress[currentCategoryObj.name] = (categoryProgress[currentCategoryObj.name] || 0) + 1;
+            localStorage.setItem("ntl_cat_prog", JSON.stringify(categoryProgress));
+        }
+        checkTitleUnlocks();
+        updatePickerButtonUI();
+
+        const nextBtn = document.getElementById("quiz-next-button");
+        if (nextBtn) nextBtn.style.display = "block";
+    } else {
+        playWrongSound();
+        if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("wrong");
+        revealCorrectAnswer();
+        loseLife();
+    }
+}
+
+function revealCorrectAnswer() {
+    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
+    if (currentQuestion && optButtons[currentQuestion.a]) {
+        optButtons[currentQuestion.a].classList.add("correct");
+    }
+    optButtons.forEach(btn => btn.setAttribute("disabled", "true"));
+    if (lives > 0) {
+        const nextBtn = document.getElementById("quiz-next-button");
+        if (nextBtn) nextBtn.style.display = "block";
+    }
+}
+
+function loseLife() {
+    lives--;
+    updateLivesUI();
+    if (lives <= 0) {
+        setTimeout(showGameOver, 1200);
+    }
+}
+
+function goToNextQuestion() {
+    const quizScreen = document.getElementById("screen-quiz");
+    const wheelScreen = document.getElementById("screen-wheel");
+    if (quizScreen) quizScreen.style.display = "none";
+    if (wheelScreen) wheelScreen.style.display = "flex";
+}
+
+function useFiftyFifty() {
+    if (!hasFiftyFifty || !currentQuestion) return;
+    hasFiftyFifty = false;
+    const btn = document.getElementById("lifeline-fifty");
+    if (btn) btn.classList.add("used");
+
+    const wrongIndexes = [];
+    currentQuestion.o.forEach((_, idx) => {
+        if (idx !== currentQuestion.a) wrongIndexes.push(idx);
+    });
+
+    wrongIndexes.sort(() => Math.random() - 0.5);
+    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
+    if (optButtons[wrongIndexes[0]]) optButtons[wrongIndexes[0]].style.visibility = "hidden";
+    if (optButtons[wrongIndexes[1]]) optButtons[wrongIndexes[1]].style.visibility = "hidden";
+}
+
+function useExtraTime() {
+    if (!hasExtraTime) return;
+    hasExtraTime = false;
+    const btn = document.getElementById("lifeline-time");
+    if (btn) btn.classList.add("used");
+
+    timer += 10;
+    const timerEl = document.getElementById("quiz-timer");
+    const bar = document.getElementById("quiz-progress-bar");
+    if (timerEl) timerEl.textContent = String(timer);
+    if (bar) bar.style.width = "100%";
+}
+
+function showGameOver() {
+    const quizScreen = document.getElementById("screen-quiz");
+    const wheelScreen = document.getElementById("screen-wheel");
+    const gameoverScreen = document.getElementById("screen-gameover");
+    if (quizScreen) quizScreen.style.display = "none";
+    if (wheelScreen) wheelScreen.style.display = "none";
+    if (gameoverScreen) gameoverScreen.style.display = "flex";
+
+    const goScore = document.getElementById("go-score");
+    const goHs = document.getElementById("go-highscore");
+    if (goScore) goScore.textContent = String(score);
+    if (goHs) goHs.textContent = String(highScore);
+}
+
+function restartGame() {
+    score = 0;
+    correctCountInRun = 0;
+    lives = 3;
+    hasFiftyFifty = true;
+    hasExtraTime = true;
+    hasPickCategoryUsed = false;
+
+    const scoreEl = document.getElementById("display-score");
+    if (scoreEl) scoreEl.textContent = "0";
+    updateLivesUI();
+    updatePickerButtonUI();
+
+    const fiftyBtn = document.getElementById("lifeline-fifty");
+    const timeBtn = document.getElementById("lifeline-time");
+    if (fiftyBtn) fiftyBtn.classList.remove("used");
+    if (timeBtn) timeBtn.classList.remove("used");
+
+    const gameoverScreen = document.getElementById("screen-gameover");
+    const wheelScreen = document.getElementById("screen-wheel");
+    if (gameoverScreen) gameoverScreen.style.display = "none";
+    if (wheelScreen) wheelScreen.style.display = "flex";
+}
+
+function checkTitleUnlocks() {
+    const totalCorrect = Object.values(categoryProgress).reduce((a, b) => a + b, 0);
+
+    titlesData.forEach(t => {
+        if (!unlockedTitles.includes(t.id)) {
+            if (t.cat === "all" && totalCorrect >= t.req) {
+                unlockedTitles.push(t.id);
+            } else if (t.cat && (categoryProgress[t.cat] || 0) >= t.req) {
+                unlockedTitles.push(t.id);
+            }
+        }
+    });
+    localStorage.setItem("ntl_unlocked_titles", JSON.stringify(unlockedTitles));
+}
+
+function openTitlesModal() {
+    const list = document.getElementById("titles-container");
+    if (!list) return;
+    list.innerHTML = "";
+
+    titlesData.forEach(t => {
+        const isUnlocked = unlockedTitles.includes(t.id);
+        const isEquipped = equippedTitle === t.name;
+
+        const card = document.createElement("div");
+        card.className = `title-item-card ${isUnlocked ? '' : 'locked'}`;
+        card.innerHTML = `
+            <div>
+                <strong style="color:${isUnlocked ? '#00d2d3' : '#888'}">${t.name}</strong>
+                <div style="font-size:10px; color:#8b8f9e;">${t.desc}</div>
+            </div>
+            <div>
+                ${isUnlocked 
+                    ? `<button class="title-use-btn" data-title="${t.name}">${isEquipped ? 'Kuşanıldı' : 'Kuşan'}</button>`
+                    : `<span style="font-size:11px; color:#777;">🔒 Kilitli</span>`
+                }
+            </div>
+        `;
+        list.appendChild(card);
+    });
+
+    list.querySelectorAll(".title-use-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const titleName = btn.getAttribute("data-title");
+            if (titleName) equipTitle(titleName);
+        });
+    });
+
+    openModal("modal-titles");
+}
+
+function equipTitle(titleName) {
+    equippedTitle = titleName;
+    localStorage.setItem("ntl_equipped_title", titleName);
+    updateBadgeUI();
+    openTitlesModal();
+}
+
+function openSettingsModal() {
+    const input = document.getElementById("settings-name-input");
+    const authType = document.getElementById("settings-auth-type");
+    if (input) input.value = userName;
+    if (authType) authType.textContent = userAuth || "Misafir";
+    openModal("modal-settings");
+}
+
+function switchAuth(provider) {
+    userAuth = provider;
+    localStorage.setItem("ntl_user_auth", provider);
+    const authType = document.getElementById("settings-auth-type");
+    if (authType) authType.textContent = provider;
+    alert(`Hesabınız başarıyla ${provider} ile eşlendi!`);
+}
+
+function saveSettings() {
+    const input = document.getElementById("settings-name-input");
+    if (input) {
+        const val = input.value.trim();
+        if (val.length > 0) {
+            userName = val;
+            localStorage.setItem("ntl_user_name", userName);
+            const unEl = document.getElementById("user-name");
+            if (unEl) unEl.textContent = userName;
+        }
+    }
+    closeModal("modal-settings");
+}
+
+// ==========================================
+// BUTON TIKLAMALARI VE AÇILIŞ KAPATMA
+// ==========================================
+
+window.addEventListener("DOMContentLoaded", () => {
+    const hsEl = document.getElementById("display-highscore");
+    const unEl = document.getElementById("user-name");
+    if (hsEl) hsEl.textContent = String(highScore);
+    if (unEl) unEl.textContent = userName;
+    updateBadgeUI();
+
+    document.querySelectorAll("#age-modal .choice-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const age = btn.getAttribute("data-age");
+            if (age) {
+                userAge = age;
+                localStorage.setItem("ntl_user_age", age);
+                closeModal("age-modal");
+                if (!userAuth) openModal("auth-modal");
+                else showMainGame();
+            }
+        });
+    });
+
+    document.querySelectorAll("#auth-modal .auth-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const auth = btn.getAttribute("data-auth");
+            if (auth) {
+                userAuth = auth;
+                localStorage.setItem("ntl_user_auth", auth);
+                closeModal("auth-modal");
+                showMainGame();
+            }
+        });
+    });
+
+    const pillSettings = document.getElementById("btn-open-settings-pill");
+    const iconSettings = document.getElementById("btn-open-settings-icon");
+    const badgeTitle = document.getElementById("current-title-badge");
+    const spinBtn = document.getElementById("spin-button");
+    const pickCatBtn = document.getElementById("pick-category-button");
+    const nextBtn = document.getElementById("quiz-next-button");
+    const fiftyBtn = document.getElementById("lifeline-fifty");
+    const timeBtn = document.getElementById("lifeline-time");
+    const restartBtn = document.getElementById("btn-restart-game");
+
+    if (pillSettings) pillSettings.addEventListener("click", openSettingsModal);
+    if (iconSettings) iconSettings.addEventListener("click", openSettingsModal);
+    if (badgeTitle) badgeTitle.addEventListener("click", openTitlesModal);
+    if (spinBtn) spinBtn.addEventListener("click", startSpin);
+    if (pickCatBtn) pickCatBtn.addEventListener("click", openCategoryPicker);
+    if (nextBtn) nextBtn.addEventListener("click", goToNextQuestion);
+    if (fiftyBtn) fiftyBtn.addEventListener("click", useFiftyFifty);
+    if (timeBtn) timeBtn.addEventListener("click", useExtraTime);
+    if (restartBtn) restartBtn.addEventListener("click", restartGame);
+
+    document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const idxStr = btn.getAttribute("data-idx");
+            if (idxStr !== null) {
+                handleAnswer(parseInt(idxStr, 10));
+            }
+        });
+    });
+
+    document.querySelectorAll("#modal-category-picker .cat-choice-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const cat = btn.getAttribute("data-cat");
+            if (cat) spinToCategory(cat);
+        });
+    });
+
+    const closeCatModal = document.getElementById("btn-close-cat-modal");
+    if (closeCatModal) closeCatModal.addEventListener("click", () => closeModal("modal-category-picker"));
+
+    const closeTitlesModal = document.getElementById("btn-close-titles-modal");
+    if (closeTitlesModal) closeTitlesModal.addEventListener("click", () => closeModal("modal-titles"));
+
+    const saveSettingsBtn = document.getElementById("btn-save-settings");
+    if (saveSettingsBtn) saveSettingsBtn.addEventListener("click", saveSettings);
+
+    document.querySelectorAll(".settings-auth-actions .auth-btn-mini").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const prov = btn.getAttribute("data-switch");
+            if (prov) switchAuth(prov);
+        });
+    });
+
+    // Açılış ekranını 1.5 saniye sonra kapat
+    setTimeout(() => {
+        const splash = document.getElementById("splash-screen");
+        if (splash) {
+            splash.style.opacity = "0";
+            setTimeout(() => {
+                splash.style.display = "none";
+                checkOnboarding();
+            }, 500);
+        } else {
+            showMainGame();
+        }
+    }, 1500);
+});
