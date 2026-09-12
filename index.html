@@ -4,318 +4,189 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Novice to Legend</title>
-    
-    <!-- iOS / Safari Tam Ekran Mobil Uygulama Ayarları -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Novice to Legend">
-
-    <!-- Uygulama Simgesi -->
-    <link rel="apple-touch-icon" href="icon.png?v=4">
-    <link rel="icon" type="image/png" href="icon.png?v=4">
-
-    <link rel="stylesheet" href="style.css">
+    <link rel="apple-touch-icon" href="novice to legend görsel.png">
 </head>
 <body>
 
-    <!-- Konfeti Efekti İçin Katman -->
     <canvas id="confetti-canvas"></canvas>
 
-    <!-- 0. SPLASH / YÜKLEME EKRANI (Bilgelik & Zeka Teması) -->
-    <div id="splash-screen" class="splash-screen">
-        <div class="splash-content">
-            <div class="splash-logo-shield">📖✨🧠</div>
-            <h1 class="splash-title">NOVICE TO LEGEND</h1>
-            <p class="splash-tagline">Bilginin Gücüyle Zirveye Yüksel</p>
-            <div class="splash-loader">
-                <div class="splash-bar"></div>
-            </div>
-            <span class="splash-loading-text">Kütüphane Açılıyor...</span>
+    <div id="splash-screen" class="splash-container">
+        <div class="splash-logo-box">
+            <img src="novice to legend görsel.png" alt="Logo" class="splash-img" onerror="this.src='icon.png'">
         </div>
+        <h1 class="splash-title">NOVICE TO LEGEND</h1>
+        <p class="splash-subtitle">Bilgi Yarışması Macerası</p>
+        <div class="splash-loader"><div class="splash-bar"></div></div>
     </div>
 
-    <!-- 0.1 YAŞ SEÇİM EKRANI (İlk Girişte) -->
-    <div id="age-modal" class="auth-modal" style="display: none;">
-        <div class="auth-card">
-            <div class="auth-icon">🎂</div>
-            <h2>YAŞINI SEÇ</h2>
-            <p>Sana en uygun yarışma deneyimini sunmak için yaş grubunu belirle:</p>
-            <div class="age-grid">
-                <button class="age-btn" onclick="saveAge('13-17')">13 - 17</button>
-                <button class="age-btn" onclick="saveAge('18-24')">18 - 24</button>
-                <button class="age-btn" onclick="saveAge('25-34')">25 - 34</button>
-                <button class="age-btn" onclick="saveAge('35+')">35+</button>
+    <div id="age-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-icon">🎂</div>
+            <h2>Yaş Aralığınızı Seçin</h2>
+            <p>Size en uygun soru deneyimini sunalım.</p>
+            <div class="modal-btn-grid">
+                <button class="choice-btn" onclick="setAgeGroup('under13')">13 Yaş Altı</button>
+                <button class="choice-btn" onclick="setAgeGroup('13-18')">13 - 18 Yaş</button>
+                <button class="choice-btn" onclick="setAgeGroup('19-25')">19 - 25 Yaş</button>
+                <button class="choice-btn" onclick="setAgeGroup('26+')">26+ Yaş</button>
             </div>
         </div>
     </div>
 
-    <!-- 0.2 HESAP GİRİŞİ / BAĞLAMA EKRANI (İlk Girişte) -->
-    <div id="auth-modal" class="auth-modal" style="display: none;">
-        <div class="auth-card">
-            <div class="auth-icon">🔮</div>
-            <h2>HESAP BAĞLA</h2>
-            <p>İlerlemeni ve unvanlarını kaydetmek için bir yöntem seç:</p>
-            <div class="auth-buttons">
-                <button class="auth-provider-btn google-btn" onclick="selectAuthMethod('Google')">
-                    <span class="provider-icon">🌐</span> Google ile Devam Et
-                </button>
-                <button class="auth-provider-btn apple-btn" onclick="selectAuthMethod('Apple')">
-                    <span class="provider-icon">🍏</span> Apple ile Devam Et
-                </button>
-                <button class="auth-provider-btn guest-btn" onclick="selectAuthMethod('Misafir')">
-                    <span class="provider-icon">👤</span> Misafir Olarak Oyna
-                </button>
+    <div id="auth-modal" class="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-icon">🔐</div>
+            <h2>Giriş Yap</h2>
+            <p>İlerlemenizi kaydetmek için bir hesap seçin.</p>
+            <div class="modal-btn-list">
+                <button class="auth-btn google-btn" onclick="finishAuth('Google')">🌐 Google ile Giriş Yap</button>
+                <button class="auth-btn apple-btn" onclick="finishAuth('Apple')">🍏 Apple ile Giriş Yap</button>
+                <button class="auth-btn guest-btn" onclick="finishAuth('Misafir')">👤 Misafir Olarak Oyna</button>
             </div>
         </div>
     </div>
 
-    <!-- 0.3 PROFİL VE AVATAR KURULUM EKRANI (İlk Girişte) -->
-    <div id="profile-setup-modal" class="auth-modal" style="display: none;">
-        <div class="auth-card">
-            <div class="auth-icon" id="setup-avatar-preview">🧙‍♂️</div>
-            <h2>KARAKTERİNİ YARAT</h2>
-            <p>Oyuncu adını yaz ve profil avatarını seç:</p>
-            
-            <input type="text" id="setup-username-input" class="modern-input" placeholder="Oyuncu Adı (Örn: Sencer)" maxlength="14">
-            
-            <span class="avatar-label">Avatar Seç:</span>
-            <div class="avatar-selection-row">
-                <div class="avatar-item active" onclick="pickSetupAvatar('🧙‍♂️', this)">🧙‍♂️</div>
-                <div class="avatar-item" onclick="pickSetupAvatar('🔮', this)">🔮</div>
-                <div class="avatar-item" onclick="pickSetupAvatar('🦉', this)">🦉</div>
-                <div class="avatar-item" onclick="pickSetupAvatar('🗡️', this)">🗡️</div>
-                <div class="avatar-item" onclick="pickSetupAvatar('🏹', this)">🏹</div>
-                <div class="avatar-item" onclick="pickSetupAvatar('🛡️', this)">🛡️</div>
-            </div>
-
-            <button class="chunky-btn save-profile-btn" onclick="finishProfileSetup()">MACERAYA BAŞLA</button>
-        </div>
-    </div>
-
-    <!-- AYARLAR & HESAP BAĞLAMA MODAL'I -->
-    <div id="settings-modal" class="menu-modal" style="display: none;">
-        <div class="menu-modal-content">
-            <div class="menu-header">
-                <h2>⚙️ OYUN AYARLARI</h2>
-                <button class="close-menu-btn" onclick="toggleSettingsModal(false)">✖</button>
-            </div>
-            
-            <div class="settings-profile-box">
-                <div class="settings-avatar" id="settings-avatar-display">🧙‍♂️</div>
-                <div class="settings-info">
-                    <input type="text" id="settings-username-input" class="modern-input" style="padding: 8px 12px; font-size: 14px;" maxlength="14">
-                    <span class="settings-status" id="settings-auth-status">Bağlantı: Misafir</span>
-                </div>
-            </div>
-
-            <span class="avatar-label" style="text-align: left;">Avatarını Değiştir:</span>
-            <div class="avatar-selection-row">
-                <div class="avatar-item" onclick="changeSettingsAvatar('🧙‍♂️', this)">🧙‍♂️</div>
-                <div class="avatar-item" onclick="changeSettingsAvatar('🔮', this)">🔮</div>
-                <div class="avatar-item" onclick="changeSettingsAvatar('🦉', this)">🦉</div>
-                <div class="avatar-item" onclick="changeSettingsAvatar('🗡️', this)">🗡️</div>
-                <div class="avatar-item" onclick="changeSettingsAvatar('🏹', this)">🏹</div>
-                <div class="avatar-item" onclick="changeSettingsAvatar('🛡️', this)">🛡️</div>
-            </div>
-
-            <hr class="settings-divider">
-
-            <h3 style="font-size: 13px; color: #ced6e0; text-align: left;">Hesap Eşleme / Bağlama:</h3>
-            <div class="auth-buttons" style="margin-top: 6px;">
-                <button class="auth-provider-btn google-btn" onclick="linkAccount('Google')">
-                    <span class="provider-icon">🌐</span> Google Hesabı Bağla
-                </button>
-                <button class="auth-provider-btn apple-btn" onclick="linkAccount('Apple')">
-                    <span class="provider-icon">🍏</span> Apple Hesabı Bağla
-                </button>
-            </div>
-
-            <button class="chunky-btn save-profile-btn" style="margin-top: 10px;" onclick="saveSettingsChanges()">AYARLARI KAYDET</button>
-        </div>
-    </div>
-
-    <!-- Yeni Unvan Bildirim Pop-up'ı -->
-    <div id="title-unlock-modal" class="title-modal" style="display: none;">
-        <div class="title-modal-content">
-            <div class="modal-crown">👑</div>
-            <h3 class="modal-header">YENİ UNVAN KAZANILDI!</h3>
-            <div class="unlocked-title-text" id="modal-title-name">[Tarih Fatihi]</div>
-            <p id="modal-title-desc">Tarih kategorisinde ustalığını kanıtladın!</p>
-            <button class="chunky-btn equip-now-btn" onclick="closeTitleModal(true)">KUŞAN VE DEVAM ET</button>
-        </div>
-    </div>
-
-    <!-- Unvanlar / Rütbe Menüsü Modal'ı -->
-    <div id="titles-menu-modal" class="menu-modal" style="display: none;">
-        <div class="menu-modal-content">
-            <div class="menu-header">
-                <h2>📜 UNVAN ENVANTERİ</h2>
-                <button class="close-menu-btn" onclick="toggleTitlesMenu(false)">✖</button>
-            </div>
-            <p class="menu-subtitle">Soruları doğru bil, unvanları aç ve karakterine kuşan!</p>
-            
-            <div class="titles-list" id="titles-list-container">
-                <!-- Dinamik dolacak -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Kategori Seçme Jokeri Modal'ı -->
-    <div id="category-select-modal" class="menu-modal" style="display: none;">
-        <div class="menu-modal-content">
-            <div class="menu-header">
-                <h2>🎯 KATEGORİ SEÇ</h2>
-                <button class="close-menu-btn" onclick="toggleCategoryModal(false)">✖</button>
-            </div>
-            <p class="menu-subtitle">Bir sonraki sorunun kategorisini belirle!</p>
-            
-           <div class="category-pick-grid">
-    <button class="category-pick-btn" style="border-color: #ff6b6b; color: #ff6b6b;" onclick="selectCategoryDirectly('Sanat')">🎨 Sanat</button>
-    <button class="category-pick-btn" style="border-color: #ff9f43; color: #ff9f43;" onclick="selectCategoryDirectly('Coğrafya')">🌍 Coğrafya</button>
-    <button class="category-pick-btn" style="border-color: #feca57; color: #feca57;" onclick="selectCategoryDirectly('Tarih')">📜 Tarih</button>
-    <button class="category-pick-btn" style="border-color: #1dd1a1; color: #1dd1a1;" onclick="selectCategoryDirectly('Bilim')">⚛️ Bilim</button>
-    <button class="category-pick-btn" style="border-color: #48dbfb; color: #48dbfb;" onclick="selectCategoryDirectly('Spor')">⚽ Spor</button>
-    <button class="category-pick-btn" style="border-color: #9b59b6; color: #9b59b6;" onclick="selectCategoryDirectly('Genel Kültür')">🧠 Genel Kültür</button>
-</div>
-        </div>
-    </div>
-
-    <div class="app-container">
+    <div class="game-wrapper" id="main-game" style="display: none;">
         
-        <!-- 1. Kategori Çarkı Ekranı -->
-        <div id="wheel-screen" class="screen">
-            <div class="top-status-bar">
-                <div class="player-mini-profile" onclick="toggleSettingsModal(true)">
-                    <span class="player-mini-avatar" id="lobby-avatar">🧙‍♂️</span>
-                    <span class="player-mini-name" id="lobby-username">Oyuncu</span>
-                </div>
-                <div class="top-right-actions">
-                    <button class="titles-btn" onclick="toggleTitlesMenu(true)">📜 Unvanlar</button>
-                    <button class="settings-btn" onclick="toggleSettingsModal(true)">⚙️</button>
-                </div>
-            </div>
-
-            <!-- Karakter & Aktif Unvan Başlığı -->
-            <div class="character-header">
-                <div class="active-title-tag" id="player-active-title">[Çaylak]</div>
-                <h1 class="game-title">NOVICE TO LEGEND</h1>
-            </div>
-
-            <!-- Lobi Kombo Göstergesi -->
-            <div class="combo-badge" id="lobby-combo" style="display: none;">
-                🔥 <span id="lobby-combo-text">2x SERİ</span>
+        <header class="game-header">
+            <div class="user-pill" onclick="openSettingsModal()">
+                <span id="user-avatar" class="avatar-icon">🧙‍♂️</span>
+                <span id="user-name" class="user-name-text">Maceracı</span>
             </div>
             
-           <!-- Rozet Tepsisi -->
-<div class="badge-tray">
-    <div class="badge-slot" id="badge-Sanat" title="Sanat">🎨</div>
-    <div class="badge-slot" id="badge-Coğrafya" title="Coğrafya">🌍</div>
-    <div class="badge-slot" id="badge-Tarih" title="Tarih">📜</div>
-    <div class="badge-slot" id="badge-Bilim" title="Bilim">⚛️</div>
-    <div class="badge-slot" id="badge-Spor" title="Spor">⚽</div>
-    <div class="badge-slot" id="badge-Genel Kültür" title="Genel Kültür">🧠</div>
-</div>
-
-            <!-- İkonlu Kategori Çarkı -->
-            <div class="wheel-wrapper">
-                <div class="wheel-pointer">🔻</div>
-                <div class="wheel" id="wheel">
-                    <div class="wheel-slice-icon slice-0">🎨</div>
-    <div class="wheel-slice-icon slice-1">🌍</div>
-    <div class="wheel-slice-icon slice-2">📜</div>
-    <div class="wheel-slice-icon slice-3">⚛️</div>
-    <div class="wheel-slice-icon slice-4">⚽</div>
-    <div class="wheel-slice-icon slice-5">🧠</div>
-    <div class="wheel-center">🎯</div>
+            <div class="header-right">
+                <div class="lives-container" id="lives-display">
+                    <span class="heart-icon">❤️</span>
+                    <span class="heart-icon">❤️</span>
+                    <span class="heart-icon">❤️</span>
+                </div>
+                <button class="icon-round-btn" onclick="openTitlesModal()" title="Unvanlar">📜</button>
+                <button class="icon-round-btn" onclick="openSettingsModal()" title="Ayarlar">⚙️</button>
             </div>
+        </header>
 
-            <div class="spin-controls">
-                <button id="spin-btn" class="chunky-btn spin-btn" onclick="spinWheel()">ÇARKI ÇEVİR</button>
-                <button id="pick-cat-btn" class="pick-cat-btn" onclick="openCategoryPicker()">🎯 Kategori Seç</button>
-            </div>
-
-            <div class="lobby-bottom-bar">
-                <div class="score-pill">⭐ Skor: <span id="lobby-score">0</span></div>
-                <div class="high-score-display">🏆 Rekor: <span id="high-score">0</span></div>
-            </div>
+        <div class="title-section">
+            <h1 class="main-title">NOVICE TO LEGEND</h1>
+            <div id="current-title-badge" class="title-badge">[Çaylak]</div>
         </div>
 
-        <!-- 2. Soru ve Cevap Ekranı -->
-        <div id="quiz-screen" class="screen" style="display: none;">
-            <div class="header">
-                <span class="category-badge" id="category">🎨 Kategori</span>
-                <div class="combo-badge" id="quiz-combo" style="display: none;">
-                    🔥 <span id="quiz-combo-text">2x SERİ</span>
+        <section id="screen-wheel" class="screen-box">
+            <div class="wheel-area">
+                <div class="wheel-pointer"></div>
+                <div id="wheel" class="wheel-disc">
+                    </div>
+                <div class="wheel-hub">🎯</div>
+            </div>
+
+            <div class="action-grid">
+                <button id="spin-button" class="btn-spin" onclick="startSpin()">ÇARKI ÇEVİR</button>
+                <button id="pick-category-button" class="btn-picker" onclick="openCategoryPicker()">🎯 Kategori Seç</button>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-card">
+                    <span class="stat-label">PUAN</span>
+                    <span id="display-score" class="stat-value">0</span>
                 </div>
-                <div class="timer-badge">⏱️ <span id="timer">15</span>s</div>
-                <div class="score-pill">⭐ <span id="score">0</span></div>
+                <div class="stat-card">
+                    <span class="stat-label">REKOR</span>
+                    <span id="display-highscore" class="stat-value">0</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-quiz" class="screen-box" style="display: none;">
+            <div class="quiz-top-bar">
+                <span id="quiz-category-tag" class="category-pill">Kategori</span>
+                <div class="timer-badge">⏳ <span id="quiz-timer">15</span>s</div>
             </div>
 
-            <div class="progress-bar-container">
-                <div class="progress-bar" id="progress-bar"></div>
+            <div class="timer-bar-container">
+                <div id="quiz-progress-bar" class="timer-bar-fill"></div>
             </div>
 
-            <div class="quiz-card" id="quiz-card">
-                <h2 id="question-text">Soru yükleniyor...</h2>
-                <div id="floating-score" class="floating-score"></div>
+            <div class="question-box">
+                <p id="quiz-question-text">Soru hazırlanıyor...</p>
             </div>
 
             <div class="options-container" id="quiz-options-wrapper">
-                <button class="chunky-option-btn" onclick="checkAnswer(0)"></button>
-                <button class="chunky-option-btn" onclick="checkAnswer(1)"></button>
-                <button class="chunky-option-btn" onclick="checkAnswer(2)"></button>
-                <button class="chunky-option-btn" onclick="checkAnswer(3)"></button>
+                <button class="quiz-opt-btn" onclick="handleAnswer(0)"></button>
+                <button class="quiz-opt-btn" onclick="handleAnswer(1)"></button>
+                <button class="quiz-opt-btn" onclick="handleAnswer(2)"></button>
+                <button class="quiz-opt-btn" onclick="handleAnswer(3)"></button>
             </div>
 
-            <!-- Soru İçi Joker Butonları -->
-            <div class="lifeline-container">
-                <button id="fifty-btn" class="lifeline-btn" onclick="useFiftyFifty()">
-                    <span class="lifeline-icon">🌓</span> 50:50
-                </button>
-                <button id="time-btn" class="lifeline-btn" onclick="useExtraTime()">
-                    <span class="lifeline-icon">⏳</span> +10sn
-                </button>
+            <div class="lifelines-container">
+                <button id="lifeline-fifty" class="lifeline-button" onclick="useFiftyFifty()">🌓 %50 Ele</button>
+                <button id="lifeline-time" class="lifeline-button" onclick="useExtraTime()">⏳ +10 Saniye</button>
             </div>
 
-            <button id="next-btn" class="chunky-btn next-btn" style="display: none;">Sonraki Soruya Geç</button>
+            <button id="quiz-next-button" class="btn-next" style="display: none;" onclick="goToNextQuestion()">DEVAM ET ➔</button>
+        </section>
+
+        <section id="screen-gameover" class="screen-box" style="display: none;">
+            <div class="gameover-card">
+                <div class="gameover-icon">💀</div>
+                <h2>Oyun Bitti!</h2>
+                <p>Tüm canlarınız tükendi.</p>
+                
+                <div class="gameover-score-box">
+                    <div>Toplam Skor: <strong id="go-score">0</strong></div>
+                    <div>En Yüksek Skor: <strong id="go-highscore">0</strong></div>
+                </div>
+
+                <button class="btn-restart" onclick="restartGame()">Yeniden Başla 🔄</button>
+            </div>
+        </section>
+
+    </div>
+
+    <div id="modal-category-picker" class="modal-overlay">
+        <div class="modal-box">
+            <h2>Kategori Seç Jokeri</h2>
+            <p>Hangi alanda yarışmak istersin?</p>
+            <div class="cat-grid">
+                <button class="cat-choice-btn" style="background:#ff6b6b;" onclick="spinToCategory('Sanat')">🎨 Sanat</button>
+                <button class="cat-choice-btn" style="background:#ff9f43;" onclick="spinToCategory('Coğrafya')">🌍 Coğrafya</button>
+                <button class="cat-choice-btn" style="background:#feca57; color:#111;" onclick="spinToCategory('Tarih')">📜 Tarih</button>
+                <button class="cat-choice-btn" style="background:#1dd1a1; color:#111;" onclick="spinToCategory('Bilim')">🔬 Bilim</button>
+                <button class="cat-choice-btn" style="background:#48dbfb; color:#111;" onclick="spinToCategory('Spor')">⚽ Spor</button>
+                <button class="cat-choice-btn" style="background:#9b59b6;" onclick="spinToCategory('Genel Kültür')">💡 Genel Kültür</button>
+            </div>
+            <button class="modal-btn-cancel" onclick="closeModal('modal-category-picker')">Vazgeç</button>
         </div>
+    </div>
 
-        <!-- 3. Oyun Bitti / Skor Ekranı -->
-        <div id="gameover-screen" class="screen" style="display: none;">
-            <div class="gameover-icon">💔</div>
-            <h1 class="gameover-title">OYUN BİTTİ</h1>
-            <p class="gameover-desc">Oyun sona erdi!</p>
-            
-            <div class="final-score-box">
-                <div class="score-row">
-                    <span>Oyuncu:</span>
-                    <strong id="final-username-display" style="color: #ffffff;">Oyuncu</strong>
-                </div>
-                <div class="score-row">
-                    <span>Mevcut Unvan:</span>
-                    <strong id="final-title-display" style="color: #00d2d3;">[Çaylak]</strong>
-                </div>
-                <div class="score-row">
-                    <span>En Yüksek Kombo:</span>
-                    <strong id="final-max-combo" style="color: #ff9f43;">0x</strong>
-                </div>
-                <div class="score-row">
-                    <span>Kazanılan Rozetler:</span>
-                    <span id="final-badges" class="final-badges-list"></span>
-                </div>
-                <div class="score-row">
-                    <span>Toplam Skor:</span>
-                    <strong id="final-score">0</strong>
-                </div>
-                <div class="score-row">
-                    <span>En Yüksek Rekor:</span>
-                    <strong id="final-highscore">0</strong>
-                </div>
-            </div>
-
-            <button class="chunky-btn restart-btn" onclick="restartGame()">YENİDEN OYNA</button>
+    <div id="modal-titles" class="modal-overlay">
+        <div class="modal-box">
+            <h2>📜 Unvanlar</h2>
+            <p>Başarılar kazandıkça yeni unvanlar açılır.</p>
+            <div id="titles-container" class="titles-list"></div>
+            <button class="modal-btn-cancel" onclick="closeModal('modal-titles')">Kapat</button>
         </div>
+    </div>
 
+    <div id="modal-settings" class="modal-overlay">
+        <div class="modal-box">
+            <h2>⚙️ Ayarlar</h2>
+            <div class="settings-group">
+                <label>Oyuncu Adı:</label>
+                <input type="text" id="settings-name-input" class="settings-input" maxlength="15">
+            </div>
+            <div class="settings-group">
+                <label>Giriş Durumu:</label>
+                <span id="settings-auth-type" class="settings-badge">Misafir</span>
+            </div>
+            <div class="settings-auth-actions">
+                <button class="auth-btn-mini google-mini" onclick="switchAuth('Google')">Google Bağla</button>
+                <button class="auth-btn-mini apple-mini" onclick="switchAuth('Apple')">Apple Bağla</button>
+            </div>
+            <button class="modal-btn-confirm" onclick="saveSettings()">Kaydet ve Kapat</button>
+        </div>
     </div>
 
     <script src="script.js"></script>
