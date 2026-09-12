@@ -339,4 +339,11 @@ function startQuestionTimer() {
         if (timerEl) timerEl.textContent = timer;
         if (bar) bar.style.width = `${(timer / 15) * 100}%`;
 
-        if (timer <= 0)
+        if (timer <= 0) {
+            clearInterval(timerInterval);
+            playWrongSound();
+            loseLife();
+            revealCorrectAnswer();
+        }
+    }, 1000);
+}

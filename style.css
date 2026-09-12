@@ -593,4 +593,5 @@ body {
     background: rgba(0, 0, 0, 0.85);
     display: none;
     justify-content: center;
-    align
+    align-items: center;
+}
