@@ -66,17 +66,16 @@ const titlesData = [
     { id: "t6", name: "[Bilge Üstat]", req: 10, cat: "all", desc: "Toplam 10 doğruya ulaş" }
 ];
 
-// Oyun Durum Değişkenleri
 let score = 0;
-let correctCountInRun = 0; // Bu turda bilinen doğru sayısı
+let correctCountInRun = 0;
 let lives = 3;
 let highScore = localStorage.getItem("ntl_highscore") || 0;
 let userAge = localStorage.getItem("ntl_user_age") || null;
 let userAuth = localStorage.getItem("ntl_user_auth") || null;
 let userName = localStorage.getItem("ntl_user_name") || "Maceracı";
 let equippedTitle = localStorage.getItem("ntl_equipped_title") || "[Çaylak]";
-let unlockedTitles = JSON.parse(localStorage.getItem("ntl_unlocked_titles")) || ["t0"];
-let categoryProgress = JSON.parse(localStorage.getItem("ntl_cat_prog")) || { "Sanat":0, "Coğrafya":0, "Tarih":0, "Bilim":0, "Spor":0, "Genel Kültür":0 };
+let unlockedTitles = JSON.parse(localStorage.getItem("ntl_unlocked_titles") || '["t0"]');
+let categoryProgress = JSON.parse(localStorage.getItem("ntl_cat_prog") || '{"Sanat":0,"Coğrafya":0,"Tarih":0,"Bilim":0,"Spor":0,"Genel Kültür":0}');
 
 let currentRotation = 0;
 let isSpinning = false;
@@ -90,18 +89,17 @@ let hasExtraTime = true;
 let hasPickCategoryUsed = false;
 
 // ==========================================
-// SES MOTORU (ZENGİN DOĞRU/YANLIŞ VE DİNAMİK ÇARK)
+// SES MOTORU (TRIVIA CRACK AKORLARI)
 // ==========================================
-const AudioContext = window.AudioContext || window.webkitAudioContext;
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 
 function getAudioContext() {
-    if (!audioCtx) audioCtx = new AudioContext();
+    if (!audioCtx) audioCtx = new AudioContextClass();
     if (audioCtx.state === 'suspended') audioCtx.resume();
     return audioCtx;
 }
 
-// Çark Tık Sesi
 function playWheelClickSound() {
     try {
         const ctx = getAudioContext();
@@ -119,11 +117,10 @@ function playWheelClickSound() {
     } catch(e) {}
 }
 
-// Neşeli, Mutlu Doğru Cevap Melodisi
 function playCorrectVictorySound() {
     try {
         const ctx = getAudioContext();
-        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (Büyük Başarı Akoru)
+        const notes = [523.25, 659.25, 783.99, 1046.50];
         notes.forEach((freq, idx) => {
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
@@ -141,42 +138,80 @@ function playCorrectVictorySound() {
     } catch(e) {}
 }
 
-// Belirleyici Yanlış Cevap Sesi (Düşük Bas Uyarısı)
 function playWrongSound() {
     try {
         const ctx = getAudioContext();
-        const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(180, ctx.currentTime);
-        osc.frequency.linearRampToValueAtTime(90, ctx.currentTime + 0.35);
-        gain.gain.setValueAtTime(0.18, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.35);
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = "sine";
+        osc1.frequency.setValueAtTime(329.63, ctx.currentTime);
+        gain1.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.16);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(ctx.currentTime);
+        osc1.stop(ctx.currentTime + 0.16);
+
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(246.94, ctx.currentTime + 0.16);
+        gain2.gain.setValueAtTime(0.20, ctx.currentTime + 0.16);
+        gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.42);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(ctx.currentTime + 0.16);
+        osc2.stop(ctx.currentTime + 0.42);
     } catch(e) {}
 }
 
 // ==========================================
-// 2. AÇILIŞ VE İLK KURULUM
+// 2. MODAL VE ARAYÜZ YARDIMCILARI
 // ==========================================
 
-window.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("display-highscore").textContent = highScore;
-    document.getElementById("user-name").textContent = userName;
-    updateBadgeUI();
+function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "flex";
+}
 
-    setTimeout(() => {
-        const splash = document.getElementById("splash-screen");
-        splash.style.opacity = "0";
-        setTimeout(() => {
-            splash.style.display = "none";
-            checkOnboarding();
-        }, 500);
-    }, 2000);
-});
+function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = "none";
+}
+
+function updateBadgeUI() {
+    const badgeTextEl = document.getElementById("badge-text");
+    if (badgeTextEl) badgeTextEl.textContent = equippedTitle;
+}
+
+function updateLivesUI() {
+    const hearts = document.querySelectorAll("#lives-display .heart-icon");
+    hearts.forEach((h, idx) => {
+        if (idx >= lives) h.classList.add("lost");
+        else h.classList.remove("lost");
+    });
+}
+
+function updatePickerButtonUI() {
+    const btn = document.getElementById("pick-category-button");
+    if (!btn) return;
+    if (hasPickCategoryUsed) {
+        btn.className = "btn-picker used";
+        btn.textContent = "🎯 Kategori Seç (Kullanıldı)";
+    } else if (correctCountInRun >= 3) {
+        btn.className = "btn-picker unlocked";
+        btn.textContent = "🎯 Kategori Seç (AÇIK)";
+    } else {
+        btn.className = "btn-picker locked";
+        btn.textContent = `🔒 Kategori Seç (${correctCountInRun}/3 Doğru)`;
+    }
+}
+
+function showMainGame() {
+    const mainGame = document.getElementById("main-game");
+    if (mainGame) mainGame.style.display = "flex";
+    updatePickerButtonUI();
+}
 
 function checkOnboarding() {
     if (!userAge) {
@@ -188,28 +223,8 @@ function checkOnboarding() {
     }
 }
 
-function setAgeGroup(age) {
-    userAge = age;
-    localStorage.setItem("ntl_user_age", age);
-    closeModal("age-modal");
-    if (!userAuth) openModal("auth-modal");
-    else showMainGame();
-}
-
-function finishAuth(provider) {
-    userAuth = provider;
-    localStorage.setItem("ntl_user_auth", provider);
-    closeModal("auth-modal");
-    showMainGame();
-}
-
-function showMainGame() {
-    document.getElementById("main-game").style.display = "flex";
-    updatePickerButtonUI();
-}
-
 // ==========================================
-// 3. GELİŞMİŞ ÇARK & YAVAŞLAYAN SES MEKANİZMASI
+// 3. ÇARK MEKANİZMASI
 // ==========================================
 
 function startSpin() {
@@ -236,28 +251,29 @@ function spinToCategory(catName) {
 
 function spinToTargetIndex(index) {
     isSpinning = true;
-    document.getElementById("spin-button").disabled = true;
-    document.getElementById("pick-category-button").disabled = true;
+    const spinBtn = document.getElementById("spin-button");
+    const pickBtn = document.getElementById("pick-category-button");
+    if (spinBtn) spinBtn.disabled = true;
+    if (pickBtn) pickBtn.disabled = true;
 
     currentCategoryObj = categories[index];
-    const segmentDeg = 360 / categories.length; // 60 derece
+    const segmentDeg = 360 / categories.length;
     const targetDegree = 360 - (index * segmentDeg + (segmentDeg / 2));
     const extraTurns = 360 * 5;
 
     currentRotation += extraTurns + ((targetDegree - (currentRotation % 360) + 360) % 360);
     const wheel = document.getElementById("wheel");
-    wheel.style.transform = `rotate(${currentRotation}deg)`;
+    if (wheel) wheel.style.transform = `rotate(${currentRotation}deg)`;
 
-    // ÇARK YAVAŞLADIKÇA SESİN DE YAVAŞLAMASI (Gerçekçi Tıklama)
-    let totalSpinTime = 3400;
-    let clickDelays = [];
+    const totalSpinTime = 3400;
+    const clickDelays = [];
     let elapsed = 0;
-    let currentInterval = 70; // Başlangıç hızı (çok hızlı tık tık)
+    let currentInterval = 70;
 
     while (elapsed < totalSpinTime) {
         clickDelays.push(elapsed);
-        let progress = elapsed / totalSpinTime; // 0 ile 1 arası
-        currentInterval = 70 + Math.pow(progress, 3) * 350; // Kübik olarak yavaşlar
+        const progress = elapsed / totalSpinTime;
+        currentInterval = 70 + Math.pow(progress, 3) * 350;
         elapsed += currentInterval;
     }
 
@@ -269,42 +285,33 @@ function spinToTargetIndex(index) {
 
     setTimeout(() => {
         isSpinning = false;
-        document.getElementById("spin-button").disabled = false;
-        document.getElementById("pick-category-button").disabled = false;
+        if (spinBtn) spinBtn.disabled = false;
+        if (pickBtn) pickBtn.disabled = false;
         openQuizScreen();
     }, 3600);
 }
 
-function updatePickerButtonUI() {
-    const btn = document.getElementById("pick-category-button");
-    if (hasPickCategoryUsed) {
-        btn.className = "btn-picker used";
-        btn.textContent = "🎯 Kategori Seç (Kullanıldı)";
-    } else if (correctCountInRun >= 3) {
-        btn.className = "btn-picker unlocked";
-        btn.textContent = "🎯 Kategori Seç (AÇIK)";
-    } else {
-        btn.className = "btn-picker locked";
-        btn.textContent = `🔒 Kategori Seç (${correctCountInRun}/3 Doğru)`;
-    }
-}
-
 // ==========================================
-// 4. SORU VE CEVAP YÖNETİMİ
+// 4. SORU EKRANI
 // ==========================================
 
 function openQuizScreen() {
-    document.getElementById("screen-wheel").style.display = "none";
-    document.getElementById("screen-quiz").style.display = "flex";
+    const wheelScreen = document.getElementById("screen-wheel");
+    const quizScreen = document.getElementById("screen-quiz");
+    if (wheelScreen) wheelScreen.style.display = "none";
+    if (quizScreen) quizScreen.style.display = "flex";
 
     const catTag = document.getElementById("quiz-category-tag");
-    catTag.textContent = currentCategoryObj.name;
-    catTag.style.backgroundColor = currentCategoryObj.color;
+    if (catTag) {
+        catTag.textContent = currentCategoryObj.name;
+        catTag.style.backgroundColor = currentCategoryObj.color;
+    }
 
     const list = questionBank[currentCategoryObj.name];
     currentQuestion = list[Math.floor(Math.random() * list.length)];
 
-    document.getElementById("quiz-question-text").textContent = currentQuestion.q;
+    const qText = document.getElementById("quiz-question-text");
+    if (qText) qText.textContent = currentQuestion.q;
 
     const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
     optButtons.forEach((btn, idx) => {
@@ -314,236 +321,22 @@ function openQuizScreen() {
         btn.disabled = false;
     });
 
-    document.getElementById("quiz-next-button").style.display = "none";
+    const nextBtn = document.getElementById("quiz-next-button");
+    if (nextBtn) nextBtn.style.display = "none";
     startQuestionTimer();
 }
 
 function startQuestionTimer() {
     timer = 15;
-    document.getElementById("quiz-timer").textContent = timer;
+    const timerEl = document.getElementById("quiz-timer");
     const bar = document.getElementById("quiz-progress-bar");
-    bar.style.width = "100%";
+    if (timerEl) timerEl.textContent = timer;
+    if (bar) bar.style.width = "100%";
 
     clearInterval(timerInterval);
     timerInterval = setInterval(() => {
         timer--;
-        document.getElementById("quiz-timer").textContent = timer;
-        bar.style.width = `${(timer / 15) * 100}%`;
+        if (timerEl) timerEl.textContent = timer;
+        if (bar) bar.style.width = `${(timer / 15) * 100}%`;
 
-        if (timer <= 0) {
-            clearInterval(timerInterval);
-            playWrongSound();
-            loseLife();
-            revealCorrectAnswer();
-        }
-    }, 1000);
-}
-
-function handleAnswer(selectedIdx) {
-    clearInterval(timerInterval);
-    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
-    optButtons.forEach(btn => btn.disabled = true);
-
-    if (selectedIdx === currentQuestion.a) {
-        // DOĞRU CEVAP
-        playCorrectVictorySound();
-        optButtons[selectedIdx].classList.add("correct");
-        score += 10;
-        correctCountInRun++;
-        document.getElementById("display-score").textContent = score;
-
-        if (score > highScore) {
-            highScore = score;
-            localStorage.setItem("ntl_highscore", highScore);
-            document.getElementById("display-highscore").textContent = highScore;
-        }
-
-        categoryProgress[currentCategoryObj.name] = (categoryProgress[currentCategoryObj.name] || 0) + 1;
-        localStorage.setItem("ntl_cat_prog", JSON.stringify(categoryProgress));
-        checkTitleUnlocks();
-        updatePickerButtonUI();
-
-        document.getElementById("quiz-next-button").style.display = "block";
-    } else {
-        // YANLIŞ CEVAP
-        playWrongSound();
-        optButtons[selectedIdx].classList.add("wrong");
-        revealCorrectAnswer();
-        loseLife();
-    }
-}
-
-function revealCorrectAnswer() {
-    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
-    optButtons[currentQuestion.a].classList.add("correct");
-    optButtons.forEach(btn => btn.disabled = true);
-    if (lives > 0) {
-        document.getElementById("quiz-next-button").style.display = "block";
-    }
-}
-
-function loseLife() {
-    lives--;
-    updateLivesUI();
-    if (lives <= 0) {
-        setTimeout(showGameOver, 1200);
-    }
-}
-
-function updateLivesUI() {
-    const hearts = document.querySelectorAll("#lives-display .heart-icon");
-    hearts.forEach((h, idx) => {
-        if (idx >= lives) h.classList.add("lost");
-        else h.classList.remove("lost");
-    });
-}
-
-function goToNextQuestion() {
-    document.getElementById("screen-quiz").style.display = "none";
-    document.getElementById("screen-wheel").style.display = "flex";
-}
-
-// ==========================================
-// 5. JOKERLER
-// ==========================================
-
-function useFiftyFifty() {
-    if (!hasFiftyFifty) return;
-    hasFiftyFifty = false;
-    const btn = document.getElementById("lifeline-fifty");
-    btn.classList.add("used");
-
-    const wrongIndexes = [];
-    currentQuestion.o.forEach((_, idx) => {
-        if (idx !== currentQuestion.a) wrongIndexes.push(idx);
-    });
-
-    wrongIndexes.sort(() => Math.random() - 0.5);
-    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
-    optButtons[wrongIndexes[0]].style.visibility = "hidden";
-    optButtons[wrongIndexes[1]].style.visibility = "hidden";
-}
-
-function useExtraTime() {
-    if (!hasExtraTime) return;
-    hasExtraTime = false;
-    const btn = document.getElementById("lifeline-time");
-    btn.classList.add("used");
-
-    timer += 10;
-    document.getElementById("quiz-timer").textContent = timer;
-    document.getElementById("quiz-progress-bar").style.width = "100%";
-}
-
-// ==========================================
-// 6. OYUN BİTTİ VE SIFIRLAMA
-// ==========================================
-
-function showGameOver() {
-    document.getElementById("screen-quiz").style.display = "none";
-    document.getElementById("screen-wheel").style.display = "none";
-    document.getElementById("screen-gameover").style.display = "flex";
-
-    document.getElementById("go-score").textContent = score;
-    document.getElementById("go-highscore").textContent = highScore;
-}
-
-function restartGame() {
-    score = 0;
-    correctCountInRun = 0;
-    lives = 3;
-    hasFiftyFifty = true;
-    hasExtraTime = true;
-    hasPickCategoryUsed = false;
-
-    document.getElementById("display-score").textContent = "0";
-    updateLivesUI();
-    updatePickerButtonUI();
-
-    document.getElementById("lifeline-fifty").classList.remove("used");
-    document.getElementById("lifeline-time").classList.remove("used");
-
-    document.getElementById("screen-gameover").style.display = "none";
-    document.getElementById("screen-wheel").style.display = "flex";
-}
-
-// ==========================================
-// 7. UNVANLAR & AYARLAR
-// ==========================================
-
-function updateBadgeUI() {
-    document.getElementById("badge-text").textContent = equippedTitle;
-}
-
-function checkTitleUnlocks() {
-    let totalCorrect = Object.values(categoryProgress).reduce((a, b) => a + b, 0);
-
-    titlesData.forEach(t => {
-        if (!unlockedTitles.includes(t.id)) {
-            if (t.cat === "all" && totalCorrect >= t.req) {
-                unlockedTitles.push(t.id);
-            } else if (t.cat && (categoryProgress[t.cat] || 0) >= t.req) {
-                unlockedTitles.push(t.id);
-            }
-        }
-    });
-    localStorage.setItem("ntl_unlocked_titles", JSON.stringify(unlockedTitles));
-}
-
-function openTitlesModal() {
-    const list = document.getElementById("titles-container");
-    list.innerHTML = "";
-
-    titlesData.forEach(t => {
-        const isUnlocked = unlockedTitles.includes(t.id);
-        const isEquipped = equippedTitle === t.name;
-
-        const card = document.createElement("div");
-        card.className = `title-item-card ${isUnlocked ? '' : 'locked'}`;
-        card.innerHTML = `
-            <div>
-                <strong style="color:${isUnlocked ? '#00d2d3' : '#888'}">${t.name}</strong>
-                <div style="font-size:10px; color:#8b8f9e;">${t.desc}</div>
-            </div>
-            ${isUnlocked 
-                ? `<button class="title-use-btn" onclick="equipTitle('${t.name}')">${isEquipped ? 'Kuşanıldı' : 'Kuşan'}</button>`
-                : `<span style="font-size:11px; color:#777;">🔒 Kilitli</span>`
-            }
-        `;
-        list.appendChild(card);
-    });
-    openModal("modal-titles");
-}
-
-function equipTitle(titleName) {
-    equippedTitle = titleName;
-    localStorage.setItem("ntl_equipped_title", titleName);
-    updateBadgeUI();
-    openTitlesModal();
-}
-
-function openSettingsModal() {
-    document.getElementById("settings-name-input").value = userName;
-    document.getElementById("settings-auth-type").textContent = userAuth || 'Misafir';
-    openModal("modal-settings");
-}
-
-function switchAuth(provider) {
-    userAuth = provider;
-    localStorage.setItem("ntl_user_auth", provider);
-    document.getElementById("settings-auth-type").textContent = provider;
-    alert(`Hesabınız başarıyla ${provider} ile eşlendi!`);
-}
-
-function saveSettings() {
-    const val = document.getElementById("settings-name-input").value.trim();
-    if (val.length > 0) {
-        userName = val;
-        localStorage.setItem("ntl_user_name", userName);
-        document.getElementById("user-name").textContent = userName;
-    }
-    closeModal("modal-settings");
-}
-
-function openModal(id) { document.getElementById(id).style.display = "flex"; }
-function closeModal(id) { document.getElementById(id).style.display = "none"; }
+        if (timer <= 0)

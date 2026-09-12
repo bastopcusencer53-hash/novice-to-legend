@@ -6,7 +6,7 @@
     <title>Novice to Legend</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="novice to legend görsel.png">
 </head>
@@ -15,16 +15,16 @@
     <canvas id="confetti-canvas"></canvas>
 
     <div id="splash-screen" class="splash-container">
-        <div class="splash-glow"></div>
-        <div class="splash-logo-box">
-            <img src="novice to legend görsel.png" alt="Quiz Logo" class="splash-img" onerror="this.src='icon.png'">
-        </div>
-        <h1 class="splash-title">NOVICE TO LEGEND</h1>
-        <p class="splash-subtitle">BİLGİ YARIŞMASI</p>
-        
-        <div class="splash-loading-wrap">
-            <span class="splash-loading-text">Yükleniyor...</span>
-            <div class="splash-loader"><div class="splash-bar"></div></div>
+        <div class="splash-bg-decor"></div>
+        <div class="splash-content">
+            <div class="splash-quiz-icon">🏆</div>
+            <h1 class="splash-title">NOVICE TO LEGEND</h1>
+            <p class="splash-subtitle">BİLGİ YARIŞMASI</p>
+            
+            <div class="splash-loading-wrap">
+                <span class="splash-loading-text">Yükleniyor...</span>
+                <div class="splash-loader"><div class="splash-bar"></div></div>
+            </div>
         </div>
     </div>
 
@@ -34,10 +34,10 @@
             <h2>Yaş Aralığınız</h2>
             <p>Size uygun soruları getirebilmemiz için seçin:</p>
             <div class="modal-btn-grid">
-                <button class="choice-btn" onclick="setAgeGroup('under13')">13 Yaş Altı</button>
-                <button class="choice-btn" onclick="setAgeGroup('13-18')">13 - 18 Yaş</button>
-                <button class="choice-btn" onclick="setAgeGroup('19-25')">19 - 25 Yaş</button>
-                <button class="choice-btn" onclick="setAgeGroup('26+')">26+ Yaş</button>
+                <button class="choice-btn" data-age="under13">13 Yaş Altı</button>
+                <button class="choice-btn" data-age="13-18">13 - 18 Yaş</button>
+                <button class="choice-btn" data-age="19-25">19 - 25 Yaş</button>
+                <button class="choice-btn" data-age="26+">26+ Yaş</button>
             </div>
         </div>
     </div>
@@ -48,9 +48,9 @@
             <h2>Giriş Yap</h2>
             <p>İlerlemenizin kaydedilmesi için bir hesap seçin:</p>
             <div class="modal-btn-list">
-                <button class="auth-btn google-btn" onclick="finishAuth('Google')">🌐 Google ile Giriş Yap</button>
-                <button class="auth-btn apple-btn" onclick="finishAuth('Apple')">🍏 Apple ile Giriş Yap</button>
-                <button class="auth-btn guest-btn" onclick="finishAuth('Misafir')">👤 Misafir Olarak Oyna</button>
+                <button class="auth-btn google-btn" data-auth="Google">🌐 Google ile Giriş Yap</button>
+                <button class="auth-btn apple-btn" data-auth="Apple">🍏 Apple ile Giriş Yap</button>
+                <button class="auth-btn guest-btn" data-auth="Misafir">👤 Misafir Olarak Oyna</button>
             </div>
         </div>
     </div>
@@ -58,7 +58,7 @@
     <div class="game-wrapper" id="main-game" style="display: none;">
         
         <header class="game-header">
-            <div class="user-pill" onclick="openSettingsModal()">
+            <div class="user-pill" id="btn-open-settings-pill">
                 <span id="user-avatar" class="avatar-icon">🧙‍♂️</span>
                 <span id="user-name" class="user-name-text">Maceracı</span>
             </div>
@@ -69,13 +69,13 @@
                     <span class="heart-icon">❤️</span>
                     <span class="heart-icon">❤️</span>
                 </div>
-                <button class="icon-round-btn" onclick="openSettingsModal()" title="Ayarlar">⚙️</button>
+                <button class="icon-round-btn" id="btn-open-settings-icon" title="Ayarlar">⚙️</button>
             </div>
         </header>
 
         <div class="title-section">
             <h1 class="main-title">NOVICE TO LEGEND</h1>
-            <div id="current-title-badge" class="title-badge clickable-title" onclick="openTitlesModal()">
+            <div id="current-title-badge" class="title-badge clickable-title">
                 <span id="badge-text">[Çaylak]</span> <span style="font-size:10px; opacity:0.8;">📜 Değiştir</span>
             </div>
         </div>
@@ -88,8 +88,8 @@
             </div>
 
             <div class="action-grid">
-                <button id="spin-button" class="btn-spin" onclick="startSpin()">ÇARKI ÇEVİR</button>
-                <button id="pick-category-button" class="btn-picker locked" onclick="openCategoryPicker()">🔒 Kategori Seç (0/3 Doğru)</button>
+                <button id="spin-button" class="btn-spin">ÇARKI ÇEVİR</button>
+                <button id="pick-category-button" class="btn-picker locked">🔒 Kategori Seç (0/3 Doğru)</button>
             </div>
 
             <div class="stats-row">
@@ -119,18 +119,18 @@
             </div>
 
             <div class="options-container" id="quiz-options-wrapper">
-                <button class="quiz-opt-btn" onclick="handleAnswer(0)"></button>
-                <button class="quiz-opt-btn" onclick="handleAnswer(1)"></button>
-                <button class="quiz-opt-btn" onclick="handleAnswer(2)"></button>
-                <button class="quiz-opt-btn" onclick="handleAnswer(3)"></button>
+                <button class="quiz-opt-btn" data-idx="0"></button>
+                <button class="quiz-opt-btn" data-idx="1"></button>
+                <button class="quiz-opt-btn" data-idx="2"></button>
+                <button class="quiz-opt-btn" data-idx="3"></button>
             </div>
 
             <div class="lifelines-container">
-                <button id="lifeline-fifty" class="lifeline-button" onclick="useFiftyFifty()">🌓 %50 Ele</button>
-                <button id="lifeline-time" class="lifeline-button" onclick="useExtraTime()">⏳ +10 Saniye</button>
+                <button id="lifeline-fifty" class="lifeline-button">🌓 %50 Ele</button>
+                <button id="lifeline-time" class="lifeline-button">⏳ +10 Saniye</button>
             </div>
 
-            <button id="quiz-next-button" class="btn-next" style="display: none;" onclick="goToNextQuestion()">DEVAM ET ➔</button>
+            <button id="quiz-next-button" class="btn-next" style="display: none;">DEVAM ET ➔</button>
         </section>
 
         <section id="screen-gameover" class="screen-box" style="display: none;">
@@ -144,7 +144,7 @@
                     <div>En Yüksek Rekor: <strong id="go-highscore">0</strong></div>
                 </div>
 
-                <button class="btn-restart" onclick="restartGame()">Tekrar Oyna 🔄</button>
+                <button class="btn-restart" id="btn-restart-game">Tekrar Oyna 🔄</button>
             </div>
         </section>
 
@@ -155,14 +155,14 @@
             <h2>Kategori Seç Jokeri</h2>
             <p>Hangi alanda yarışmak istersin?</p>
             <div class="cat-grid">
-                <button class="cat-choice-btn" style="background:#ff6b6b;" onclick="spinToCategory('Sanat')">🎨 Sanat</button>
-                <button class="cat-choice-btn" style="background:#ff9f43;" onclick="spinToCategory('Coğrafya')">🌍 Coğrafya</button>
-                <button class="cat-choice-btn" style="background:#feca57; color:#111;" onclick="spinToCategory('Tarih')">📜 Tarih</button>
-                <button class="cat-choice-btn" style="background:#1dd1a1; color:#111;" onclick="spinToCategory('Bilim')">🔬 Bilim</button>
-                <button class="cat-choice-btn" style="background:#48dbfb; color:#111;" onclick="spinToCategory('Spor')">⚽ Spor</button>
-                <button class="cat-choice-btn" style="background:#9b59b6;" onclick="spinToCategory('Genel Kültür')">💡 Genel Kültür</button>
+                <button class="cat-choice-btn" style="background:#ff6b6b;" data-cat="Sanat">🎨 Sanat</button>
+                <button class="cat-choice-btn" style="background:#ff9f43;" data-cat="Coğrafya">🌍 Coğrafya</button>
+                <button class="cat-choice-btn" style="background:#feca57; color:#111;" data-cat="Tarih">📜 Tarih</button>
+                <button class="cat-choice-btn" style="background:#1dd1a1; color:#111;" data-cat="Bilim">🔬 Bilim</button>
+                <button class="cat-choice-btn" style="background:#48dbfb; color:#111;" data-cat="Spor">⚽ Spor</button>
+                <button class="cat-choice-btn" style="background:#9b59b6;" data-cat="Genel Kültür">💡 Genel Kültür</button>
             </div>
-            <button class="modal-btn-cancel" onclick="closeModal('modal-category-picker')">Vazgeç</button>
+            <button class="modal-btn-cancel" id="btn-close-cat-modal">Vazgeç</button>
         </div>
     </div>
 
@@ -171,7 +171,7 @@
             <h2>📜 Unvan Koleksiyonu</h2>
             <p>Doğru cevaplar verdikçe yeni unvanlar kazanırsın.</p>
             <div id="titles-container" class="titles-list"></div>
-            <button class="modal-btn-cancel" onclick="closeModal('modal-titles')">Kapat</button>
+            <button class="modal-btn-cancel" id="btn-close-titles-modal">Kapat</button>
         </div>
     </div>
 
@@ -179,7 +179,7 @@
         <div class="modal-box">
             <h2>⚙️ Ayarlar</h2>
             <div class="settings-group">
-                <label>Oyuncu Adı:</label>
+                <label for="settings-name-input">Oyuncu Adı:</label>
                 <input type="text" id="settings-name-input" class="settings-input" maxlength="15">
             </div>
             <div class="settings-group">
@@ -187,10 +187,10 @@
                 <span id="settings-auth-type" class="settings-badge">Misafir</span>
             </div>
             <div class="settings-auth-actions">
-                <button class="auth-btn-mini google-mini" onclick="switchAuth('Google')">Google Bağla</button>
-                <button class="auth-btn-mini apple-mini" onclick="switchAuth('Apple')">Apple Bağla</button>
+                <button class="auth-btn-mini google-mini" data-switch="Google">Google Bağla</button>
+                <button class="auth-btn-mini apple-mini" data-switch="Apple">Apple Bağla</button>
             </div>
-            <button class="modal-btn-confirm" onclick="saveSettings()">Kaydet ve Kapat</button>
+            <button class="modal-btn-confirm" id="btn-save-settings">Kaydet ve Kapat</button>
         </div>
     </div>
 
