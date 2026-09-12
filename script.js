@@ -88,7 +88,7 @@ let hasExtraTime = true;
 let hasPickCategoryUsed = false;
 
 // ==========================================
-// SES MOTORU (TRIVIA CRACK AKORLARI)
+// SES MOTORU
 // ==========================================
 let audioCtx = null;
 
@@ -172,7 +172,7 @@ function playWrongSound() {
 }
 
 // ==========================================
-// 2. ARAYÜZ VE GEÇİŞ YARDIMCILARI
+// 2. ARAYÜZ YARDIMCILARI
 // ==========================================
 
 function openModal(id) {
@@ -226,4 +226,455 @@ function switchScreen(screenId) {
         const el = document.getElementById(id);
         if (el) el.style.display = (id === screenId) ? "flex" : "none";
     });
+}
+
+// ==========================================
+// 3. ÇARK MEKANİZMASI
+// ==========================================
+
+function spinToTargetIndex(index) {
+    isSpinning = true;
+    const spinBtn = document.getElementById("spin-button");
+    const pickBtn = document.getElementById("pick-category-button");
+    if (spinBtn) spinBtn.setAttribute("disabled", "true");
+    if (pickBtn) pickBtn.setAttribute("disabled", "true");
+
+    currentCategoryObj = categories[index];
+    const segmentDeg = 360 / categories.length;
+    const targetDegree = 360 - (index * segmentDeg + (segmentDeg / 2));
+    const extraTurns = 360 * 5;
+
+    currentRotation += extraTurns + ((targetDegree - (currentRotation % 360) + 360) % 360);
+    const wheel = document.getElementById("wheel");
+    if (wheel) wheel.style.transform = `rotate(${currentRotation}deg)`;
+
+    const totalSpinTime = 3400;
+    const clickDelays = [];
+    let elapsed = 0;
+    let currentInterval = 70;
+
+    while (elapsed < totalSpinTime) {
+        clickDelays.push(elapsed);
+        const progress = elapsed / totalSpinTime;
+        currentInterval = 70 + Math.pow(progress, 3) * 350;
+        elapsed += currentInterval;
+    }
+
+    clickDelays.forEach(delay => {
+        setTimeout(() => {
+            playWheelClickSound();
+        }, delay);
+    });
+
+    setTimeout(() => {
+        isSpinning = false;
+        if (spinBtn) spinBtn.removeAttribute("disabled");
+        if (pickBtn) pickBtn.removeAttribute("disabled");
+        openQuizScreen();
+    }, 3600);
+}
+
+function startSpin() {
+    if (isSpinning) return;
+    const randomIndex = Math.floor(Math.random() * categories.length);
+    spinToTargetIndex(randomIndex);
+}
+
+function openCategoryPicker() {
+    if (isSpinning || hasPickCategoryUsed || correctCountInRun < 3) return;
+    openModal("modal-category-picker");
+}
+
+function spinToCategory(catName) {
+    closeModal("modal-category-picker");
+    if (isSpinning || hasPickCategoryUsed) return;
+
+    hasPickCategoryUsed = true;
+    updatePickerButtonUI();
+
+    const targetIdx = categories.findIndex(c => c.name === catName);
+    if (targetIdx !== -1) {
+        spinToTargetIndex(targetIdx);
+    }
+}
+
+// ==========================================
+// 4. SORU EKRANI
+// ==========================================
+
+function openQuizScreen() {
+    switchScreen("screen-quiz");
+
+    const catTag = document.getElementById("quiz-category-tag");
+    if (catTag && currentCategoryObj) {
+        catTag.textContent = currentCategoryObj.name;
+        catTag.style.backgroundColor = currentCategoryObj.color;
+    }
+
+    if (currentCategoryObj) {
+        const list = questionBank[currentCategoryObj.name];
+        currentQuestion = list[Math.floor(Math.random() * list.length)];
+    }
+
+    const qText = document.getElementById("quiz-question-text");
+    if (qText && currentQuestion) qText.textContent = currentQuestion.q;
+
+    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
+    optButtons.forEach((btn, idx) => {
+        if (currentQuestion) {
+            btn.textContent = currentQuestion.o[idx];
+        }
+        btn.classList.remove("correct", "wrong");
+        btn.style.visibility = "visible";
+        btn.removeAttribute("disabled");
+    });
+
+    const nextBtn = document.getElementById("quiz-next-button");
+    if (nextBtn) nextBtn.style.display = "none";
+    startQuestionTimer();
+}
+
+function startQuestionTimer() {
+    timer = 15;
+    const timerEl = document.getElementById("quiz-timer");
+    const bar = document.getElementById("quiz-progress-bar");
+    if (timerEl) timerEl.textContent = String(timer);
+    if (bar) bar.style.width = "100%";
+
+    if (timerInterval) clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        timer--;
+        if (timerEl) timerEl.textContent = String(timer);
+        if (bar) bar.style.width = `${(timer / 15) * 100}%`;
+
+        if (timer <= 0) {
+            if (timerInterval) clearInterval(timerInterval);
+            playWrongSound();
+            loseLife();
+            revealCorrectAnswer();
+        }
+    }, 1000);
+}
+
+function handleAnswer(selectedIdx) {
+    if (timerInterval) clearInterval(timerInterval);
+    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
+    optButtons.forEach(btn => btn.setAttribute("disabled", "true"));
+
+    if (currentQuestion && selectedIdx === currentQuestion.a) {
+        playCorrectVictorySound();
+        if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("correct");
+        score += 10;
+        correctCountInRun++;
+        const scoreEl = document.getElementById("display-score");
+        if (scoreEl) scoreEl.textContent = String(score);
+
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("ntl_highscore", String(highScore));
+            const hsEl = document.getElementById("display-highscore");
+            if (hsEl) hsEl.textContent = String(highScore);
+        }
+
+        if (currentCategoryObj) {
+            categoryProgress[currentCategoryObj.name] = (categoryProgress[currentCategoryObj.name] || 0) + 1;
+            localStorage.setItem("ntl_cat_prog", JSON.stringify(categoryProgress));
+        }
+        checkTitleUnlocks();
+        updatePickerButtonUI();
+
+        const nextBtn = document.getElementById("quiz-next-button");
+        if (nextBtn) nextBtn.style.display = "block";
+    } else {
+        playWrongSound();
+        if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("wrong");
+        revealCorrectAnswer();
+        loseLife();
+    }
+}
+
+function revealCorrectAnswer() {
+    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
+    if (currentQuestion && optButtons[currentQuestion.a]) {
+        optButtons[currentQuestion.a].classList.add("correct");
+    }
+    optButtons.forEach(btn => btn.setAttribute("disabled", "true"));
+    if (lives > 0) {
+        const nextBtn = document.getElementById("quiz-next-button");
+        if (nextBtn) nextBtn.style.display = "block";
+    }
+}
+
+function loseLife() {
+    lives--;
+    updateLivesUI();
+    if (lives <= 0) {
+        setTimeout(showGameOver, 1200);
+    }
+}
+
+function goToNextQuestion() {
+    switchScreen("screen-wheel");
+}
+
+// ==========================================
+// 5. JOKERLER
+// ==========================================
+
+function useFiftyFifty() {
+    if (!hasFiftyFifty || !currentQuestion) return;
+    hasFiftyFifty = false;
+    const btn = document.getElementById("lifeline-fifty");
+    if (btn) btn.classList.add("used");
+
+    const wrongIndexes = [];
+    currentQuestion.o.forEach((_, idx) => {
+        if (idx !== currentQuestion.a) wrongIndexes.push(idx);
+    });
+
+    wrongIndexes.sort(() => Math.random() - 0.5);
+    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
+    if (optButtons[wrongIndexes[0]]) optButtons[wrongIndexes[0]].style.visibility = "hidden";
+    if (optButtons[wrongIndexes[1]]) optButtons[wrongIndexes[1]].style.visibility = "hidden";
+}
+
+function useExtraTime() {
+    if (!hasExtraTime) return;
+    hasExtraTime = false;
+    const btn = document.getElementById("lifeline-time");
+    if (btn) btn.classList.add("used");
+
+    timer += 10;
+    const timerEl = document.getElementById("quiz-timer");
+    const bar = document.getElementById("quiz-progress-bar");
+    if (timerEl) timerEl.textContent = String(timer);
+    if (bar) bar.style.width = "100%";
+}
+
+// ==========================================
+// 6. OYUN BİTTİ & YENİDEN BAŞLAT
+// ==========================================
+
+function showGameOver() {
+    switchScreen("screen-gameover");
+    const goScore = document.getElementById("go-score");
+    const goHs = document.getElementById("go-highscore");
+    if (goScore) goScore.textContent = String(score);
+    if (goHs) goHs.textContent = String(highScore);
+}
+
+function restartGame() {
+    score = 0;
+    correctCountInRun = 0;
+    lives = 3;
+    hasFiftyFifty = true;
+    hasExtraTime = true;
+    hasPickCategoryUsed = false;
+
+    const scoreEl = document.getElementById("display-score");
+    if (scoreEl) scoreEl.textContent = "0";
+    updateLivesUI();
+    updatePickerButtonUI();
+
+    const fiftyBtn = document.getElementById("lifeline-fifty");
+    const timeBtn = document.getElementById("lifeline-time");
+    if (fiftyBtn) fiftyBtn.classList.remove("used");
+    if (timeBtn) timeBtn.classList.remove("used");
+
+    switchScreen("screen-wheel");
+}
+
+// ==========================================
+// 7. UNVANLAR & AYARLAR
+// ==========================================
+
+function checkTitleUnlocks() {
+    const totalCorrect = Object.values(categoryProgress).reduce((a, b) => a + b, 0);
+
+    titlesData.forEach(t => {
+        if (!unlockedTitles.includes(t.id)) {
+            if (t.cat === "all" && totalCorrect >= t.req) {
+                unlockedTitles.push(t.id);
+            } else if (t.cat && (categoryProgress[t.cat] || 0) >= t.req) {
+                unlockedTitles.push(t.id);
+            }
+        }
+    });
+    localStorage.setItem("ntl_unlocked_titles", JSON.stringify(unlockedTitles));
+}
+
+function openTitlesModal() {
+    const list = document.getElementById("titles-container");
+    if (!list) return;
+    list.innerHTML = "";
+
+    titlesData.forEach(t => {
+        const isUnlocked = unlockedTitles.includes(t.id);
+        const isEquipped = equippedTitle === t.name;
+
+        const card = document.createElement("div");
+        card.className = `title-item-card ${isUnlocked ? '' : 'locked'}`;
+        card.innerHTML = `
+            <div>
+                <strong style="color:${isUnlocked ? '#00d2d3' : '#888'}">${t.name}</strong>
+                <div style="font-size:10px; color:#8b8f9e;">${t.desc}</div>
+            </div>
+            <div>
+                ${isUnlocked 
+                    ? `<button class="title-use-btn" data-title="${t.name}">${isEquipped ? 'Kuşanıldı' : 'Kuşan'}</button>`
+                    : `<span style="font-size:11px; color:#777;">🔒 Kilitli</span>`
+                }
+            </div>
+        `;
+        list.appendChild(card);
+    });
+
+    list.querySelectorAll(".title-use-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const titleName = btn.getAttribute("data-title");
+            if (titleName) equipTitle(titleName);
+        });
+    });
+
+    openModal("modal-titles");
+}
+
+function equipTitle(titleName) {
+    equippedTitle = titleName;
+    localStorage.setItem("ntl_equipped_title", titleName);
+    updateBadgeUI();
+    openTitlesModal();
+}
+
+function openSettingsModal() {
+    const input = document.getElementById("settings-name-input");
+    if (input) input.value = userName;
+    openModal("modal-settings");
+}
+
+function handleAuthSelection(provider) {
+    userAuth = provider;
+    localStorage.setItem("ntl_user_auth", provider);
+    updateAuthUI();
+    alert(`Hesabınız başarıyla ${provider} ile eşlendi!`);
+}
+
+function saveSettings() {
+    const input = document.getElementById("settings-name-input");
+    if (input) {
+        const val = input.value.trim();
+        if (val.length > 0) {
+            userName = val;
+            localStorage.setItem("ntl_user_name", userName);
+            const unEl = document.getElementById("user-name");
+            if (unEl) unEl.textContent = userName;
+        }
+    }
+    closeModal("modal-settings");
+}
+
+// ==========================================
+// 8. BAŞLATICI & AÇILIŞ KAPATICI
+// ==========================================
+
+function initApp() {
+    const hsEl = document.getElementById("display-highscore");
+    const unEl = document.getElementById("user-name");
+    if (hsEl) hsEl.textContent = String(highScore);
+    if (unEl) unEl.textContent = userName;
+    updateBadgeUI();
+    updateAuthUI();
+
+    const btnPlay = document.getElementById("btn-menu-play");
+    const btnTitles = document.getElementById("btn-menu-titles");
+    const btnSettings = document.getElementById("btn-menu-settings");
+    const btnAbout = document.getElementById("btn-menu-about");
+    const btnProfilePill = document.getElementById("menu-profile-pill");
+
+    if (btnPlay) btnPlay.addEventListener("click", () => {
+        restartGame();
+        switchScreen("screen-wheel");
+    });
+    if (btnTitles) btnTitles.addEventListener("click", openTitlesModal);
+    if (btnSettings) btnSettings.addEventListener("click", openSettingsModal);
+    if (btnAbout) btnAbout.addEventListener("click", () => openModal("modal-about"));
+    if (btnProfilePill) btnProfilePill.addEventListener("click", openSettingsModal);
+
+    const btnGoogle = document.getElementById("btn-auth-google");
+    const btnApple = document.getElementById("btn-auth-apple");
+    const btnGuest = document.getElementById("btn-auth-guest");
+    if (btnGoogle) btnGoogle.addEventListener("click", () => handleAuthSelection("Google"));
+    if (btnApple) btnApple.addEventListener("click", () => handleAuthSelection("Apple"));
+    if (btnGuest) btnGuest.addEventListener("click", () => handleAuthSelection("Misafir"));
+
+    const btnBackHome = document.getElementById("btn-back-to-menu");
+    const btnGoHome = document.getElementById("btn-go-home");
+    const spinBtn = document.getElementById("spin-button");
+    const pickCatBtn = document.getElementById("pick-category-button");
+    const nextBtn = document.getElementById("quiz-next-button");
+    const fiftyBtn = document.getElementById("lifeline-fifty");
+    const timeBtn = document.getElementById("lifeline-time");
+    const restartBtn = document.getElementById("btn-restart-game");
+
+    if (btnBackHome) btnBackHome.addEventListener("click", () => switchScreen("screen-menu"));
+    if (btnGoHome) btnGoHome.addEventListener("click", () => switchScreen("screen-menu"));
+    if (spinBtn) spinBtn.addEventListener("click", startSpin);
+    if (pickCatBtn) pickCatBtn.addEventListener("click", openCategoryPicker);
+    if (nextBtn) nextBtn.addEventListener("click", goToNextQuestion);
+    if (fiftyBtn) fiftyBtn.addEventListener("click", useFiftyFifty);
+    if (timeBtn) timeBtn.addEventListener("click", useExtraTime);
+    if (restartBtn) restartBtn.addEventListener("click", restartGame);
+
+    document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const idxStr = btn.getAttribute("data-idx");
+            if (idxStr !== null) handleAnswer(parseInt(idxStr, 10));
+        });
+    });
+
+    document.querySelectorAll("#modal-category-picker .cat-choice-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const cat = btn.getAttribute("data-cat");
+            if (cat) spinToCategory(cat);
+        });
+    });
+
+    const closeCatModal = document.getElementById("btn-close-cat-modal");
+    if (closeCatModal) closeCatModal.addEventListener("click", () => closeModal("modal-category-picker"));
+
+    const closeTitlesModal = document.getElementById("btn-close-titles-modal");
+    if (closeTitlesModal) closeTitlesModal.addEventListener("click", () => closeModal("modal-titles"));
+
+    const closeAboutModal = document.getElementById("btn-close-about");
+    if (closeAboutModal) closeAboutModal.addEventListener("click", () => closeModal("modal-about"));
+
+    const saveSettingsBtn = document.getElementById("btn-save-settings");
+    if (saveSettingsBtn) saveSettingsBtn.addEventListener("click", saveSettings);
+}
+
+// Açılış ekranını doğrudan ve kesin olarak kapatma fonksiyonu
+function dismissSplashScreen() {
+    const splash = document.getElementById("splash-screen");
+    const mainGame = document.getElementById("main-game");
+    if (splash) {
+        splash.style.opacity = "0";
+        setTimeout(() => {
+            splash.style.display = "none";
+            if (mainGame) mainGame.style.display = "flex";
+            switchScreen("screen-menu");
+        }, 500);
+    } else if (mainGame) {
+        mainGame.style.display = "flex";
+        switchScreen("screen-menu");
+    }
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+        initApp();
+        setTimeout(dismissSplashScreen, 1500);
+    });
+} else {
+    initApp();
+    setTimeout(dismissSplashScreen, 1500);
 }
