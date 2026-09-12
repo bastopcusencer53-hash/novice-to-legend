@@ -57,7 +57,7 @@ const questionBank = {
 };
 
 const titlesData = [
-    { id: "t0", name: "[Çaylak]", req: 0, desc: "Maceraya ilk adım" },
+    { id: "t0", name: "[Çaylak]", req: 0, cat: "", desc: "Maceraya ilk adım" },
     { id: "t1", name: "[Tarih Meraklısı]", req: 3, cat: "Tarih", desc: "3 Tarih sorusu bil" },
     { id: "t2", name: "[Bilim Dahisi]", req: 3, cat: "Bilim", desc: "3 Bilim sorusu bil" },
     { id: "t3", name: "[Gezgin Kaşif]", req: 3, cat: "Coğrafya", desc: "3 Coğrafya sorusu bil" },
@@ -69,9 +69,8 @@ const titlesData = [
 let score = 0;
 let correctCountInRun = 0;
 let lives = 3;
-let highScore = localStorage.getItem("ntl_highscore") || 0;
-let userAge = localStorage.getItem("ntl_user_age") || null;
-let userAuth = localStorage.getItem("ntl_user_auth") || null;
+let highScore = Number(localStorage.getItem("ntl_highscore")) || 0;
+let userAuth = localStorage.getItem("ntl_user_auth") || "Misafir";
 let userName = localStorage.getItem("ntl_user_name") || "Maceracı";
 let equippedTitle = localStorage.getItem("ntl_equipped_title") || "[Çaylak]";
 let unlockedTitles = JSON.parse(localStorage.getItem("ntl_unlocked_titles") || '["t0"]');
@@ -91,18 +90,23 @@ let hasPickCategoryUsed = false;
 // ==========================================
 // SES MOTORU (TRIVIA CRACK AKORLARI)
 // ==========================================
-const AudioContextClass = window.AudioContext || window.webkitAudioContext;
 let audioCtx = null;
 
 function getAudioContext() {
-    if (!audioCtx) audioCtx = new AudioContextClass();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    if (!audioCtx) {
+        const AudioClass = window.AudioContext || window["webkitAudioContext"];
+        if (AudioClass) audioCtx = new AudioClass();
+    }
+    if (audioCtx && audioCtx.state === "suspended") {
+        audioCtx.resume();
+    }
     return audioCtx;
 }
 
 function playWheelClickSound() {
     try {
         const ctx = getAudioContext();
+        if (!ctx) return;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = "triangle";
@@ -114,12 +118,13 @@ function playWheelClickSound() {
         gain.connect(ctx.destination);
         osc.start();
         osc.stop(ctx.currentTime + 0.04);
-    } catch(e) {}
+    } catch (_) {}
 }
 
 function playCorrectVictorySound() {
     try {
         const ctx = getAudioContext();
+        if (!ctx) return;
         const notes = [523.25, 659.25, 783.99, 1046.50];
         notes.forEach((freq, idx) => {
             const osc = ctx.createOscillator();
@@ -135,12 +140,13 @@ function playCorrectVictorySound() {
             osc.start(startTime);
             osc.stop(startTime + 0.35);
         });
-    } catch(e) {}
+    } catch (_) {}
 }
 
 function playWrongSound() {
     try {
         const ctx = getAudioContext();
+        if (!ctx) return;
         const osc1 = ctx.createOscillator();
         const gain1 = ctx.createGain();
         osc1.type = "sine";
@@ -162,11 +168,11 @@ function playWrongSound() {
         gain2.connect(ctx.destination);
         osc2.start(ctx.currentTime + 0.16);
         osc2.stop(ctx.currentTime + 0.42);
-    } catch(e) {}
+    } catch (_) {}
 }
 
 // ==========================================
-// 2. MODAL VE ARAYÜZ YARDIMCILARI
+// 2. ARAYÜZ VE GEÇİŞ YARDIMCILARI
 // ==========================================
 
 function openModal(id) {
@@ -180,8 +186,10 @@ function closeModal(id) {
 }
 
 function updateBadgeUI() {
-    const badgeTextEl = document.getElementById("badge-text");
-    if (badgeTextEl) badgeTextEl.textContent = equippedTitle;
+    const menuBadge = document.getElementById("menu-title-badge");
+    const gameBadge = document.getElementById("current-title-badge");
+    if (menuBadge) menuBadge.textContent = equippedTitle;
+    if (gameBadge) gameBadge.textContent = equippedTitle;
 }
 
 function updateLivesUI() {
@@ -207,466 +215,15 @@ function updatePickerButtonUI() {
     }
 }
 
-function showMainGame() {
-    const mainGame = document.getElementById("main-game");
-    if (mainGame) mainGame.style.display = "flex";
-    updatePickerButtonUI();
+function updateAuthUI() {
+    const label = document.getElementById("auth-status-label");
+    if (label) label.textContent = `Giriş Durumu: (${userAuth})`;
 }
 
-function checkOnboarding() {
-    if (!userAge) {
-        openModal("age-modal");
-    } else if (!userAuth) {
-        openModal("auth-modal");
-    } else {
-        showMainGame();
-    }
-}
-
-// ==========================================
-// 3. ÇARK MEKANİZMASI
-// ==========================================
-
-function startSpin() {
-    if (isSpinning) return;
-    const randomIndex = Math.floor(Math.random() * categories.length);
-    spinToTargetIndex(randomIndex);
-}
-
-function openCategoryPicker() {
-    if (isSpinning || hasPickCategoryUsed || correctCountInRun < 3) return;
-    openModal("modal-category-picker");
-}
-
-function spinToCategory(catName) {
-    closeModal("modal-category-picker");
-    if (isSpinning || hasPickCategoryUsed) return;
-
-    hasPickCategoryUsed = true;
-    updatePickerButtonUI();
-
-    const targetIdx = categories.findIndex(c => c.name === catName);
-    spinToTargetIndex(targetIdx);
-}
-
-function spinToTargetIndex(index) {
-    isSpinning = true;
-    const spinBtn = document.getElementById("spin-button");
-    const pickBtn = document.getElementById("pick-category-button");
-    if (spinBtn) spinBtn.disabled = true;
-    if (pickBtn) pickBtn.disabled = true;
-
-    currentCategoryObj = categories[index];
-    const segmentDeg = 360 / categories.length;
-    const targetDegree = 360 - (index * segmentDeg + (segmentDeg / 2));
-    const extraTurns = 360 * 5;
-
-    currentRotation += extraTurns + ((targetDegree - (currentRotation % 360) + 360) % 360);
-    const wheel = document.getElementById("wheel");
-    if (wheel) wheel.style.transform = `rotate(${currentRotation}deg)`;
-
-    const totalSpinTime = 3400;
-    const clickDelays = [];
-    let elapsed = 0;
-    let currentInterval = 70;
-
-    while (elapsed < totalSpinTime) {
-        clickDelays.push(elapsed);
-        const progress = elapsed / totalSpinTime;
-        currentInterval = 70 + Math.pow(progress, 3) * 350;
-        elapsed += currentInterval;
-    }
-
-    clickDelays.forEach(delay => {
-        setTimeout(() => {
-            playWheelClickSound();
-        }, delay);
+function switchScreen(screenId) {
+    const screens = ["screen-menu", "screen-wheel", "screen-quiz", "screen-gameover"];
+    screens.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = (id === screenId) ? "flex" : "none";
     });
-
-    setTimeout(() => {
-        isSpinning = false;
-        if (spinBtn) spinBtn.disabled = false;
-        if (pickBtn) pickBtn.disabled = false;
-        openQuizScreen();
-    }, 3600);
 }
-
-// ==========================================
-// 4. SORU EKRANI
-// ==========================================
-
-function openQuizScreen() {
-    const wheelScreen = document.getElementById("screen-wheel");
-    const quizScreen = document.getElementById("screen-quiz");
-    if (wheelScreen) wheelScreen.style.display = "none";
-    if (quizScreen) quizScreen.style.display = "flex";
-
-    const catTag = document.getElementById("quiz-category-tag");
-    if (catTag) {
-        catTag.textContent = currentCategoryObj.name;
-        catTag.style.backgroundColor = currentCategoryObj.color;
-    }
-
-    const list = questionBank[currentCategoryObj.name];
-    currentQuestion = list[Math.floor(Math.random() * list.length)];
-
-    const qText = document.getElementById("quiz-question-text");
-    if (qText) qText.textContent = currentQuestion.q;
-
-    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
-    optButtons.forEach((btn, idx) => {
-        btn.textContent = currentQuestion.o[idx];
-        btn.classList.remove("correct", "wrong");
-        btn.style.visibility = "visible";
-        btn.disabled = false;
-    });
-
-    const nextBtn = document.getElementById("quiz-next-button");
-    if (nextBtn) nextBtn.style.display = "none";
-    startQuestionTimer();
-}
-
-function startQuestionTimer() {
-    timer = 15;
-    const timerEl = document.getElementById("quiz-timer");
-    const bar = document.getElementById("quiz-progress-bar");
-    if (timerEl) timerEl.textContent = String(timer);
-    if (bar) bar.style.width = "100%";
-
-    if (timerInterval) clearInterval(timerInterval);
-    timerInterval = setInterval(() => {
-        timer--;
-        if (timerEl) timerEl.textContent = String(timer);
-        if (bar) bar.style.width = `${(timer / 15) * 100}%`;
-
-        if (timer <= 0) {
-            if (timerInterval) clearInterval(timerInterval);
-            playWrongSound();
-            loseLife();
-            revealCorrectAnswer();
-        }
-    }, 1000);
-}
-
-function handleAnswer(selectedIdx) {
-    if (timerInterval) clearInterval(timerInterval);
-    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
-    optButtons.forEach(btn => btn.setAttribute("disabled", "true"));
-
-    if (currentQuestion && selectedIdx === currentQuestion.a) {
-        playCorrectVictorySound();
-        if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("correct");
-        score += 10;
-        correctCountInRun++;
-        const scoreEl = document.getElementById("display-score");
-        if (scoreEl) scoreEl.textContent = String(score);
-
-        if (score > highScore) {
-            highScore = score;
-            localStorage.setItem("ntl_highscore", String(highScore));
-            const hsEl = document.getElementById("display-highscore");
-            if (hsEl) hsEl.textContent = String(highScore);
-        }
-
-        if (currentCategoryObj) {
-            categoryProgress[currentCategoryObj.name] = (categoryProgress[currentCategoryObj.name] || 0) + 1;
-            localStorage.setItem("ntl_cat_prog", JSON.stringify(categoryProgress));
-        }
-        checkTitleUnlocks();
-        updatePickerButtonUI();
-
-        const nextBtn = document.getElementById("quiz-next-button");
-        if (nextBtn) nextBtn.style.display = "block";
-    } else {
-        playWrongSound();
-        if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("wrong");
-        revealCorrectAnswer();
-        loseLife();
-    }
-}
-
-function revealCorrectAnswer() {
-    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
-    if (currentQuestion && optButtons[currentQuestion.a]) {
-        optButtons[currentQuestion.a].classList.add("correct");
-    }
-    optButtons.forEach(btn => btn.setAttribute("disabled", "true"));
-    if (lives > 0) {
-        const nextBtn = document.getElementById("quiz-next-button");
-        if (nextBtn) nextBtn.style.display = "block";
-    }
-}
-
-function loseLife() {
-    lives--;
-    updateLivesUI();
-    if (lives <= 0) {
-        setTimeout(showGameOver, 1200);
-    }
-}
-
-function goToNextQuestion() {
-    const quizScreen = document.getElementById("screen-quiz");
-    const wheelScreen = document.getElementById("screen-wheel");
-    if (quizScreen) quizScreen.style.display = "none";
-    if (wheelScreen) wheelScreen.style.display = "flex";
-}
-
-function useFiftyFifty() {
-    if (!hasFiftyFifty || !currentQuestion) return;
-    hasFiftyFifty = false;
-    const btn = document.getElementById("lifeline-fifty");
-    if (btn) btn.classList.add("used");
-
-    const wrongIndexes = [];
-    currentQuestion.o.forEach((_, idx) => {
-        if (idx !== currentQuestion.a) wrongIndexes.push(idx);
-    });
-
-    wrongIndexes.sort(() => Math.random() - 0.5);
-    const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
-    if (optButtons[wrongIndexes[0]]) optButtons[wrongIndexes[0]].style.visibility = "hidden";
-    if (optButtons[wrongIndexes[1]]) optButtons[wrongIndexes[1]].style.visibility = "hidden";
-}
-
-function useExtraTime() {
-    if (!hasExtraTime) return;
-    hasExtraTime = false;
-    const btn = document.getElementById("lifeline-time");
-    if (btn) btn.classList.add("used");
-
-    timer += 10;
-    const timerEl = document.getElementById("quiz-timer");
-    const bar = document.getElementById("quiz-progress-bar");
-    if (timerEl) timerEl.textContent = String(timer);
-    if (bar) bar.style.width = "100%";
-}
-
-function showGameOver() {
-    const quizScreen = document.getElementById("screen-quiz");
-    const wheelScreen = document.getElementById("screen-wheel");
-    const gameoverScreen = document.getElementById("screen-gameover");
-    if (quizScreen) quizScreen.style.display = "none";
-    if (wheelScreen) wheelScreen.style.display = "none";
-    if (gameoverScreen) gameoverScreen.style.display = "flex";
-
-    const goScore = document.getElementById("go-score");
-    const goHs = document.getElementById("go-highscore");
-    if (goScore) goScore.textContent = String(score);
-    if (goHs) goHs.textContent = String(highScore);
-}
-
-function restartGame() {
-    score = 0;
-    correctCountInRun = 0;
-    lives = 3;
-    hasFiftyFifty = true;
-    hasExtraTime = true;
-    hasPickCategoryUsed = false;
-
-    const scoreEl = document.getElementById("display-score");
-    if (scoreEl) scoreEl.textContent = "0";
-    updateLivesUI();
-    updatePickerButtonUI();
-
-    const fiftyBtn = document.getElementById("lifeline-fifty");
-    const timeBtn = document.getElementById("lifeline-time");
-    if (fiftyBtn) fiftyBtn.classList.remove("used");
-    if (timeBtn) timeBtn.classList.remove("used");
-
-    const gameoverScreen = document.getElementById("screen-gameover");
-    const wheelScreen = document.getElementById("screen-wheel");
-    if (gameoverScreen) gameoverScreen.style.display = "none";
-    if (wheelScreen) wheelScreen.style.display = "flex";
-}
-
-function checkTitleUnlocks() {
-    const totalCorrect = Object.values(categoryProgress).reduce((a, b) => a + b, 0);
-
-    titlesData.forEach(t => {
-        if (!unlockedTitles.includes(t.id)) {
-            if (t.cat === "all" && totalCorrect >= t.req) {
-                unlockedTitles.push(t.id);
-            } else if (t.cat && (categoryProgress[t.cat] || 0) >= t.req) {
-                unlockedTitles.push(t.id);
-            }
-        }
-    });
-    localStorage.setItem("ntl_unlocked_titles", JSON.stringify(unlockedTitles));
-}
-
-function openTitlesModal() {
-    const list = document.getElementById("titles-container");
-    if (!list) return;
-    list.innerHTML = "";
-
-    titlesData.forEach(t => {
-        const isUnlocked = unlockedTitles.includes(t.id);
-        const isEquipped = equippedTitle === t.name;
-
-        const card = document.createElement("div");
-        card.className = `title-item-card ${isUnlocked ? '' : 'locked'}`;
-        card.innerHTML = `
-            <div>
-                <strong style="color:${isUnlocked ? '#00d2d3' : '#888'}">${t.name}</strong>
-                <div style="font-size:10px; color:#8b8f9e;">${t.desc}</div>
-            </div>
-            <div>
-                ${isUnlocked 
-                    ? `<button class="title-use-btn" data-title="${t.name}">${isEquipped ? 'Kuşanıldı' : 'Kuşan'}</button>`
-                    : `<span style="font-size:11px; color:#777;">🔒 Kilitli</span>`
-                }
-            </div>
-        `;
-        list.appendChild(card);
-    });
-
-    list.querySelectorAll(".title-use-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const titleName = btn.getAttribute("data-title");
-            if (titleName) equipTitle(titleName);
-        });
-    });
-
-    openModal("modal-titles");
-}
-
-function equipTitle(titleName) {
-    equippedTitle = titleName;
-    localStorage.setItem("ntl_equipped_title", titleName);
-    updateBadgeUI();
-    openTitlesModal();
-}
-
-function openSettingsModal() {
-    const input = document.getElementById("settings-name-input");
-    const authType = document.getElementById("settings-auth-type");
-    if (input) input.value = userName;
-    if (authType) authType.textContent = userAuth || "Misafir";
-    openModal("modal-settings");
-}
-
-function switchAuth(provider) {
-    userAuth = provider;
-    localStorage.setItem("ntl_user_auth", provider);
-    const authType = document.getElementById("settings-auth-type");
-    if (authType) authType.textContent = provider;
-    alert(`Hesabınız başarıyla ${provider} ile eşlendi!`);
-}
-
-function saveSettings() {
-    const input = document.getElementById("settings-name-input");
-    if (input) {
-        const val = input.value.trim();
-        if (val.length > 0) {
-            userName = val;
-            localStorage.setItem("ntl_user_name", userName);
-            const unEl = document.getElementById("user-name");
-            if (unEl) unEl.textContent = userName;
-        }
-    }
-    closeModal("modal-settings");
-}
-
-// ==========================================
-// BUTON TIKLAMALARI VE AÇILIŞ KAPATMA
-// ==========================================
-
-window.addEventListener("DOMContentLoaded", () => {
-    const hsEl = document.getElementById("display-highscore");
-    const unEl = document.getElementById("user-name");
-    if (hsEl) hsEl.textContent = String(highScore);
-    if (unEl) unEl.textContent = userName;
-    updateBadgeUI();
-
-    document.querySelectorAll("#age-modal .choice-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const age = btn.getAttribute("data-age");
-            if (age) {
-                userAge = age;
-                localStorage.setItem("ntl_user_age", age);
-                closeModal("age-modal");
-                if (!userAuth) openModal("auth-modal");
-                else showMainGame();
-            }
-        });
-    });
-
-    document.querySelectorAll("#auth-modal .auth-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const auth = btn.getAttribute("data-auth");
-            if (auth) {
-                userAuth = auth;
-                localStorage.setItem("ntl_user_auth", auth);
-                closeModal("auth-modal");
-                showMainGame();
-            }
-        });
-    });
-
-    const pillSettings = document.getElementById("btn-open-settings-pill");
-    const iconSettings = document.getElementById("btn-open-settings-icon");
-    const badgeTitle = document.getElementById("current-title-badge");
-    const spinBtn = document.getElementById("spin-button");
-    const pickCatBtn = document.getElementById("pick-category-button");
-    const nextBtn = document.getElementById("quiz-next-button");
-    const fiftyBtn = document.getElementById("lifeline-fifty");
-    const timeBtn = document.getElementById("lifeline-time");
-    const restartBtn = document.getElementById("btn-restart-game");
-
-    if (pillSettings) pillSettings.addEventListener("click", openSettingsModal);
-    if (iconSettings) iconSettings.addEventListener("click", openSettingsModal);
-    if (badgeTitle) badgeTitle.addEventListener("click", openTitlesModal);
-    if (spinBtn) spinBtn.addEventListener("click", startSpin);
-    if (pickCatBtn) pickCatBtn.addEventListener("click", openCategoryPicker);
-    if (nextBtn) nextBtn.addEventListener("click", goToNextQuestion);
-    if (fiftyBtn) fiftyBtn.addEventListener("click", useFiftyFifty);
-    if (timeBtn) timeBtn.addEventListener("click", useExtraTime);
-    if (restartBtn) restartBtn.addEventListener("click", restartGame);
-
-    document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const idxStr = btn.getAttribute("data-idx");
-            if (idxStr !== null) {
-                handleAnswer(parseInt(idxStr, 10));
-            }
-        });
-    });
-
-    document.querySelectorAll("#modal-category-picker .cat-choice-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const cat = btn.getAttribute("data-cat");
-            if (cat) spinToCategory(cat);
-        });
-    });
-
-    const closeCatModal = document.getElementById("btn-close-cat-modal");
-    if (closeCatModal) closeCatModal.addEventListener("click", () => closeModal("modal-category-picker"));
-
-    const closeTitlesModal = document.getElementById("btn-close-titles-modal");
-    if (closeTitlesModal) closeTitlesModal.addEventListener("click", () => closeModal("modal-titles"));
-
-    const saveSettingsBtn = document.getElementById("btn-save-settings");
-    if (saveSettingsBtn) saveSettingsBtn.addEventListener("click", saveSettings);
-
-    document.querySelectorAll(".settings-auth-actions .auth-btn-mini").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const prov = btn.getAttribute("data-switch");
-            if (prov) switchAuth(prov);
-        });
-    });
-
-    // Açılış ekranını 1.5 saniye sonra kapat
-    setTimeout(() => {
-        const splash = document.getElementById("splash-screen");
-        if (splash) {
-            splash.style.opacity = "0";
-            setTimeout(() => {
-                splash.style.display = "none";
-                checkOnboarding();
-            }, 500);
-        } else {
-            showMainGame();
-        }
-    }, 1500);
-});

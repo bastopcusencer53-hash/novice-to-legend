@@ -1,7 +1,7 @@
 * {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
-    box-sizing: border-box;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     user-select: none;
     -webkit-user-select: none;
@@ -27,7 +27,7 @@ body {
     z-index: 9999;
 }
 
-/* ================= 1. EĞLENCELİ YARIŞMA YÜKLEME EKRANI ================= */
+/* ================= 1. YÜKLEME EKRANI ================= */
 .splash-container {
     position: fixed;
     top: 0;
@@ -41,10 +41,8 @@ body {
     align-items: center;
     z-index: 5000;
     transition: opacity 0.5s ease;
-    overflow: hidden;
 }
 
-/* Bilgi Yarışması Temalı Arka Plan Işıkları ve Süslemeleri */
 .splash-bg-decor {
     position: absolute;
     width: 100%;
@@ -59,22 +57,22 @@ body {
 .splash-content {
     position: relative;
     z-index: 2;
+    text-align: center;
     display: flex;
     flex-direction: column;
     align-items: center;
-    text-align: center;
 }
 
 .splash-quiz-icon {
-    font-size: 75px;
+    font-size: 70px;
     margin-bottom: 12px;
     filter: drop-shadow(0 10px 20px rgba(254, 202, 87, 0.5));
     animation: bounceIcon 2s infinite ease-in-out;
 }
 
 @keyframes bounceIcon {
-    0%, 100% { transform: translateY(0) scale(1); }
-    50% { transform: translateY(-10px) scale(1.08); }
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
 }
 
 .splash-title {
@@ -93,7 +91,7 @@ body {
     font-weight: 800;
     color: #48dbfb;
     letter-spacing: 4px;
-    margin-bottom: 35px;
+    margin-bottom: 30px;
 }
 
 .splash-loading-wrap {
@@ -104,32 +102,23 @@ body {
 }
 
 .splash-loading-text {
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12px;
     color: #feca57;
-    letter-spacing: 1px;
-    animation: pulseText 1.5s infinite ease-in-out;
-}
-
-@keyframes pulseText {
-    0%, 100% { opacity: 0.6; }
-    50% { opacity: 1; }
 }
 
 .splash-loader {
-    width: 180px;
-    height: 7px;
+    width: 170px;
+    height: 6px;
     background: rgba(255, 255, 255, 0.1);
     border-radius: 10px;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .splash-bar {
     width: 0%;
     height: 100%;
-    background: linear-gradient(90deg, #feca57, #ff6b6b, #48dbfb);
-    animation: loadAnim 2s ease-in-out forwards;
+    background: linear-gradient(90deg, #feca57, #48dbfb);
+    animation: loadAnim 1.5s ease-in-out forwards;
 }
 
 @keyframes loadAnim {
@@ -137,7 +126,7 @@ body {
     100% { width: 100%; }
 }
 
-/* ================= 2. OYUN ANA ÇERÇEVESİ ================= */
+/* ================= 2. ANA OYUN ÇERÇEVESİ ================= */
 .game-wrapper {
     width: 100%;
     max-width: 400px;
@@ -149,14 +138,23 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
+    min-height: 580px;
 }
 
-.game-header {
+.screen-box {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* ================= 3. ANA MENÜ / LOBİ TASARIMI ================= */
+.menu-header {
     width: 100%;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 15px;
 }
 
 .user-pill {
@@ -168,13 +166,169 @@ body {
     border-radius: 20px;
     font-size: 13px;
     font-weight: 700;
+}
+
+.title-badge {
+    padding: 4px 12px;
+    background: rgba(0, 210, 211, 0.15);
+    color: #00d2d3;
+    border: 1px solid #00d2d3;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.game-logo-area {
+    text-align: center;
+    margin: 10px 0 20px 0;
+}
+
+.logo-circle {
+    font-size: 50px;
+    margin-bottom: 4px;
+    filter: drop-shadow(0 6px 15px rgba(254, 202, 87, 0.4));
+}
+
+.game-brand-title {
+    font-size: 22px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+    background: linear-gradient(135deg, #00d2d3, #0084ff);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.game-brand-desc {
+    font-size: 11px;
+    color: #8b8f9e;
+    margin-top: 2px;
+}
+
+/* MENÜ KARTLARI (ALT ALTA) */
+.menu-cards-container {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.menu-btn {
+    width: 100%;
+    background: #1c2133;
+    border: 1px solid #28304a;
+    color: #ffffff;
+    padding: 13px 18px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.menu-btn:active {
+    transform: scale(0.98);
+}
+
+.menu-btn.play-btn {
+    background: linear-gradient(135deg, #0084ff, #0056b3);
+    border: none;
+    padding: 16px 20px;
+    box-shadow: 0 6px 20px rgba(0, 132, 255, 0.4);
+}
+
+.menu-btn.play-btn .btn-text {
+    font-size: 16px;
+    font-weight: 900;
+    letter-spacing: 1px;
+}
+
+.btn-icon {
+    font-size: 20px;
+}
+
+.btn-text {
+    font-size: 14px;
+    font-weight: 700;
+}
+
+/* ENTEGRE GİRİŞ BÖLÜMÜ */
+.menu-auth-section {
+    width: 100%;
+    background: #0d0f17;
+    border: 1px solid #1f2438;
+    border-radius: 16px;
+    padding: 12px;
+    text-align: center;
+}
+
+.auth-title-text {
+    font-size: 11px;
+    color: #8b8f9e;
+    font-weight: 700;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.auth-buttons-row {
+    display: flex;
+    gap: 8px;
+}
+
+.auth-choice-btn {
+    flex: 1;
+    padding: 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 800;
+    border: none;
     cursor: pointer;
 }
 
-.header-right {
+.google-auth { background: #ffffff; color: #111; }
+.apple-auth { background: #000000; color: #fff; border: 1px solid #333; }
+.guest-auth { background: #252b40; color: #fff; }
+
+/* ================= 4. ÇARK EKRANI ================= */
+.game-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.header-center {
+    text-align: center;
+}
+
+.header-game-title {
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: 1px;
+    display: block;
+}
+
+.title-badge-small {
+    font-size: 10px;
+    color: #00d2d3;
+    font-weight: 800;
+}
+
+.icon-round-btn {
+    background: #1f2438;
+    border: none;
+    color: #fff;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    font-size: 15px;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
 }
 
 .lives-container {
@@ -191,60 +345,6 @@ body {
     filter: grayscale(100%);
 }
 
-.icon-round-btn {
-    background: #1f2438;
-    border: none;
-    color: #fff;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    font-size: 14px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.title-section {
-    text-align: center;
-    margin-bottom: 12px;
-}
-
-.main-title {
-    font-size: 18px;
-    font-weight: 900;
-    letter-spacing: 1px;
-}
-
-.clickable-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 14px;
-    background: rgba(0, 210, 211, 0.15);
-    color: #00d2d3;
-    border: 1px solid #00d2d3;
-    border-radius: 14px;
-    font-size: 12px;
-    font-weight: 800;
-    margin-top: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.clickable-title:active {
-    transform: scale(0.95);
-    background: rgba(0, 210, 211, 0.3);
-}
-
-.screen-box {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-/* ================= 3. ÇARK ALANI ================= */
 .wheel-area {
     position: relative;
     width: 250px;
@@ -304,7 +404,6 @@ body {
     justify-content: center;
     font-size: 18px;
     z-index: 20;
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.7);
 }
 
 .action-grid {
@@ -329,10 +428,6 @@ body {
     box-shadow: 0 6px 18px rgba(0, 132, 255, 0.4);
 }
 
-.btn-spin:active {
-    transform: scale(0.98);
-}
-
 .btn-picker {
     width: 75%;
     margin: 0 auto;
@@ -344,7 +439,6 @@ body {
     font-size: 11px;
     font-weight: 700;
     cursor: pointer;
-    transition: all 0.2s;
 }
 
 .btn-picker.locked {
@@ -359,7 +453,6 @@ body {
     background: #1e3048;
     color: #00d2d3;
     border-color: #00d2d3;
-    box-shadow: 0 0 10px rgba(0, 210, 211, 0.2);
 }
 
 .btn-picker.used {
@@ -372,7 +465,6 @@ body {
     width: 100%;
     display: flex;
     gap: 10px;
-    align-items: stretch;
 }
 
 .score-card {
@@ -384,7 +476,6 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    box-shadow: 0 4px 12px rgba(0, 210, 211, 0.15);
 }
 
 .highlight-score {
@@ -419,7 +510,7 @@ body {
     font-weight: 900;
 }
 
-/* ================= 4. SORU EKRANI ================= */
+/* ================= 5. SORU EKRANI ================= */
 .quiz-top-bar {
     width: 100%;
     display: flex;
@@ -496,7 +587,6 @@ body {
     font-weight: 700;
     text-align: left;
     cursor: pointer;
-    transition: background 0.2s;
 }
 
 .quiz-opt-btn.correct {
@@ -549,7 +639,7 @@ body {
     cursor: pointer;
 }
 
-/* ================= 5. OYUN BİTTİ EKRANI ================= */
+/* ================= 6. OYUN BİTTİ EKRANI ================= */
 .gameover-card {
     text-align: center;
     padding: 20px 10px;
@@ -572,14 +662,31 @@ body {
     gap: 8px;
 }
 
+.gameover-btn-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .btn-restart {
     background: #0084ff;
     color: #fff;
     border: none;
-    padding: 14px 28px;
+    padding: 14px;
     border-radius: 14px;
     font-size: 15px;
     font-weight: 800;
+    cursor: pointer;
+}
+
+.btn-menu-back {
+    background: #1f2438;
+    color: #fff;
+    border: 1px solid #2f3652;
+    padding: 12px;
+    border-radius: 14px;
+    font-size: 14px;
+    font-weight: 700;
     cursor: pointer;
 }
 
@@ -594,4 +701,123 @@ body {
     display: none;
     justify-content: center;
     align-items: center;
+    z-index: 6000;
+    padding: 15px;
+}
+
+.modal-box {
+    background: #141724;
+    border: 1px solid #23283c;
+    border-radius: 24px;
+    padding: 22px;
+    width: 100%;
+    max-width: 350px;
+    text-align: center;
+}
+
+.modal-box h2 {
+    font-size: 18px;
+    margin-bottom: 8px;
+}
+
+.modal-box p {
+    font-size: 12px;
+    color: #8b8f9e;
+    margin-bottom: 16px;
+}
+
+.cat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.cat-choice-btn {
+    border: none;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 800;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.modal-btn-cancel {
+    background: #2b3047;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+}
+
+.modal-btn-confirm {
+    background: #0084ff;
+    color: #fff;
+    border: none;
+    padding: 12px;
+    border-radius: 12px;
+    font-weight: 800;
+    width: 100%;
+    margin-top: 14px;
+    cursor: pointer;
+}
+
+.titles-list {
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.title-item-card {
+    background: #0d0f17;
+    padding: 10px;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #1f2438;
+}
+
+.title-use-btn {
+    background: #00d2d3;
+    color: #111;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+    margin-bottom: 12px;
+}
+
+.settings-input {
+    background: #0d0f17;
+    border: 1px solid #23283c;
+    padding: 10px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+}
+
+.about-content {
+    text-align: left;
+    font-size: 12px;
+    color: #d1d8e0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
 }

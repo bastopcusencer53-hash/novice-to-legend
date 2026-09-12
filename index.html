@@ -6,8 +6,7 @@
     <title>Novice to Legend</title>
     <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#141724">
     <link rel="apple-touch-icon" href="novice to legend görsel.png">
 </head>
 <body>
@@ -28,59 +27,71 @@
         </div>
     </div>
 
-    <div id="age-modal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-icon">🎂</div>
-            <h2>Yaş Aralığınız</h2>
-            <p>Size uygun soruları getirebilmemiz için seçin:</p>
-            <div class="modal-btn-grid">
-                <button class="choice-btn" data-age="under13">13 Yaş Altı</button>
-                <button class="choice-btn" data-age="13-18">13 - 18 Yaş</button>
-                <button class="choice-btn" data-age="19-25">19 - 25 Yaş</button>
-                <button class="choice-btn" data-age="26+">26+ Yaş</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="auth-modal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-icon">🔐</div>
-            <h2>Giriş Yap</h2>
-            <p>İlerlemenizin kaydedilmesi için bir hesap seçin:</p>
-            <div class="modal-btn-list">
-                <button class="auth-btn google-btn" data-auth="Google">🌐 Google ile Giriş Yap</button>
-                <button class="auth-btn apple-btn" data-auth="Apple">🍏 Apple ile Giriş Yap</button>
-                <button class="auth-btn guest-btn" data-auth="Misafir">👤 Misafir Olarak Oyna</button>
-            </div>
-        </div>
-    </div>
-
     <div class="game-wrapper" id="main-game" style="display: none;">
         
-        <header class="game-header">
-            <div class="user-pill" id="btn-open-settings-pill">
-                <span id="user-avatar" class="avatar-icon">🧙‍♂️</span>
-                <span id="user-name" class="user-name-text">Maceracı</span>
+        <section id="screen-menu" class="screen-box">
+            <div class="menu-header">
+                <div class="user-pill" id="menu-profile-pill">
+                    <span id="user-avatar">🧙‍♂️</span>
+                    <span id="user-name">Maceracı</span>
+                </div>
+                <div class="title-badge" id="menu-title-badge">[Çaylak]</div>
             </div>
-            
-            <div class="header-right">
+
+            <div class="game-logo-area">
+                <div class="logo-circle">🏆</div>
+                <h1 class="game-brand-title">NOVICE TO LEGEND</h1>
+                <p class="game-brand-desc">Bilginin Gücüyle Efsane Ol</p>
+            </div>
+
+            <div class="menu-cards-container">
+                <button class="menu-btn play-btn" id="btn-menu-play">
+                    <span class="btn-icon">🎮</span>
+                    <span class="btn-text">OYUNA BAŞLA</span>
+                </button>
+
+                <button class="menu-btn" id="btn-menu-titles">
+                    <span class="btn-icon">📜</span>
+                    <span class="btn-text">Unvanlar & Başarılar</span>
+                </button>
+
+                <button class="menu-btn" id="btn-menu-settings">
+                    <span class="btn-icon">⚙️</span>
+                    <span class="btn-text">Ayarlar & Profil</span>
+                </button>
+
+                <button class="menu-btn" id="btn-menu-about">
+                    <span class="btn-icon">ℹ️</span>
+                    <span class="btn-text">Nasıl Oynanır?</span>
+                </button>
+            </div>
+
+            <div class="menu-auth-section">
+                <span class="auth-title-text" id="auth-status-label">Giriş Yap: (Misafir)</span>
+                <div class="auth-buttons-row">
+                    <button class="auth-choice-btn google-auth" id="btn-auth-google">🌐 Google</button>
+                    <button class="auth-choice-btn apple-auth" id="btn-auth-apple">🍏 Apple</button>
+                    <button class="auth-choice-btn guest-auth" id="btn-auth-guest">👤 Misafir</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="screen-wheel" class="screen-box" style="display: none;">
+            <div class="game-header">
+                <button class="icon-round-btn" id="btn-back-to-menu" title="Menüye Dön">🏠</button>
+                
+                <div class="header-center">
+                    <span class="header-game-title">NOVICE TO LEGEND</span>
+                    <div id="current-title-badge" class="title-badge-small">[Çaylak]</div>
+                </div>
+
                 <div class="lives-container" id="lives-display">
                     <span class="heart-icon">❤️</span>
                     <span class="heart-icon">❤️</span>
                     <span class="heart-icon">❤️</span>
                 </div>
-                <button class="icon-round-btn" id="btn-open-settings-icon" title="Ayarlar">⚙️</button>
             </div>
-        </header>
 
-        <div class="title-section">
-            <h1 class="main-title">NOVICE TO LEGEND</h1>
-            <div id="current-title-badge" class="title-badge clickable-title">
-                <span id="badge-text">[Çaylak]</span> <span style="font-size:10px; opacity:0.8;">📜 Değiştir</span>
-            </div>
-        </div>
-
-        <section id="screen-wheel" class="screen-box">
             <div class="wheel-area">
                 <div class="wheel-pointer"></div>
                 <div id="wheel" class="wheel-disc"></div>
@@ -144,7 +155,10 @@
                     <div>En Yüksek Rekor: <strong id="go-highscore">0</strong></div>
                 </div>
 
-                <button class="btn-restart" id="btn-restart-game">Tekrar Oyna 🔄</button>
+                <div class="gameover-btn-grid">
+                    <button class="btn-restart" id="btn-restart-game">Tekrar Oyna 🔄</button>
+                    <button class="btn-menu-back" id="btn-go-home">Menüye Dön 🏠</button>
+                </div>
             </div>
         </section>
 
@@ -177,20 +191,26 @@
 
     <div id="modal-settings" class="modal-overlay">
         <div class="modal-box">
-            <h2>⚙️ Ayarlar</h2>
+            <h2>⚙️ Ayarlar & Profil</h2>
             <div class="settings-group">
                 <label for="settings-name-input">Oyuncu Adı:</label>
                 <input type="text" id="settings-name-input" class="settings-input" maxlength="15">
             </div>
-            <div class="settings-group">
-                <label>Giriş Durumu:</label>
-                <span id="settings-auth-type" class="settings-badge">Misafir</span>
-            </div>
-            <div class="settings-auth-actions">
-                <button class="auth-btn-mini google-mini" data-switch="Google">Google Bağla</button>
-                <button class="auth-btn-mini apple-mini" data-switch="Apple">Apple Bağla</button>
-            </div>
             <button class="modal-btn-confirm" id="btn-save-settings">Kaydet ve Kapat</button>
+        </div>
+    </div>
+
+    <div id="modal-about" class="modal-overlay">
+        <div class="modal-box">
+            <h2>ℹ️ Nasıl Oynanır?</h2>
+            <div class="about-content">
+                <p>🎯 <strong>Çarkı Çevir:</strong> 6 farklı kategoriden biri gelir.</p>
+                <p>⏳ <strong>15 Saniye:</strong> Her soru için süren vardır.</p>
+                <p>❤️ <strong>3 Can:</strong> Yanlış yaparsan bir canın eksilir.</p>
+                <p>✨ <strong>Jokerler:</strong> %50 Eleme ve +10 Saniye jokerlerini kullanabilirsin.</p>
+                <p>📜 <strong>Unvanlar:</strong> Doğrularını artırarak efsaneye dönüş!</p>
+            </div>
+            <button class="modal-btn-confirm" id="btn-close-about">Anladım</button>
         </div>
     </div>
 
