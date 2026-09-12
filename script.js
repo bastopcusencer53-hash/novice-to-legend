@@ -56,7 +56,6 @@ const questionBank = {
     ]
 };
 
-// Oylanacak Topluluk Soruları
 let communityQuestions = [
     { cat: "Bilim", q: "Ay'a ilk ayak basan astronot kimdir?", correct: "Neil Armstrong" },
     { cat: "Tarih", q: "Çanakkale Zaferi hangi yılda kazanılmıştır?", correct: "1915" },
@@ -74,19 +73,16 @@ const titlesData = [
     { id: "t6", name: "[Bilge Üstat]", req: 10, cat: "all", desc: "Toplam 10 doğruya ulaş" }
 ];
 
-// Günlük Görevler Veritabanı
-let dailyQuests = JSON.parse(localStorage.getItem("ntl_daily_quests")) || [
+let dailyQuests = JSON.parse(localStorage.getItem("ntl_daily_quests") || "null") || [
     { id: "q1", text: "5 Soru Doğru Bil", target: 5, current: 0, done: false },
     { id: "q2", text: "2 Tarih Sorusu Bil", target: 2, current: 0, cat: "Tarih", done: false },
     { id: "q3", text: "1 Oyun Tamamla", target: 1, current: 0, done: false }
 ];
-let chestClaimed = JSON.parse(localStorage.getItem("ntl_chest_claimed")) || false;
+let chestClaimed = JSON.parse(localStorage.getItem("ntl_chest_claimed") || "false");
 
-// Streak & Tarih Takibi
 let streakCount = Number(localStorage.getItem("ntl_streak_count")) || 1;
 let lastLoginDate = localStorage.getItem("ntl_last_login") || "";
 
-// Oyun Durum Değişkenleri
 let score = 0;
 let combo = 0;
 let correctCountInRun = 0;
@@ -194,7 +190,66 @@ function playWrongSound() {
 }
 
 // ==========================================
-// 2. STREAK & GÖREV MEKANİZMASI
+// 2. KONFETİ MOTORU (CANVAS)
+// ==========================================
+
+function triggerConfetti() {
+    const canvas = document.getElementById("confetti-canvas");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const particles = [];
+    const colors = ["#ff6b6b", "#feca57", "#1dd1a1", "#48dbfb", "#9b59b6", "#ff9f43"];
+
+    for (let i = 0; i < 70; i++) {
+        particles.push({
+            x: canvas.width / 2,
+            y: canvas.height / 2 + 30,
+            r: Math.random() * 6 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            tilt: Math.floor(Math.random() * 10) - 10,
+            tiltAngleIncremental: (Math.random() * 0.07) + 0.05,
+            tiltAngle: 0,
+            vx: (Math.random() - 0.5) * 14,
+            vy: (Math.random() * -12) - 4
+        });
+    }
+
+    let animationFrame;
+
+    function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+            ctx.beginPath();
+            ctx.lineWidth = p.r;
+            ctx.strokeStyle = p.color;
+            ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+            ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+            ctx.stroke();
+
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.35; // Yerçekimi ivmesi
+            p.tiltAngle += p.tiltAngleIncremental;
+            p.tilt = Math.sin(p.tiltAngle) * 10;
+        });
+
+        if (particles.some(p => p.y < canvas.height)) {
+            animationFrame = requestAnimationFrame(draw);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            cancelAnimationFrame(animationFrame);
+        }
+    }
+    draw();
+}
+
+// ==========================================
+// 3. STREAK & GÖREV MEKANİZMASI
 // ==========================================
 
 function checkDailyStreak() {
@@ -287,12 +342,13 @@ function claimChestReward() {
         hasExtraTime = true;
         updateLivesUI();
         renderQuestsUI();
+        triggerConfetti();
         alert("🎉 TEBRİKLER! Sandıktan 3 Can ve ekstra Jokerler kazandın!");
     }
 }
 
 // ==========================================
-// 3. ARAYÜZ YARDIMCILARI
+// 4. ARAYÜZ YARDIMCILARI
 // ==========================================
 
 function openModal(id) {
@@ -349,7 +405,7 @@ function switchScreen(screenId) {
 }
 
 // ==========================================
-// 4. ÇARK MEKANİZMASI
+// 5. ÇARK MEKANİZMASI
 // ==========================================
 
 function spinToTargetIndex(index) {
@@ -419,7 +475,7 @@ function spinToCategory(catName) {
 }
 
 // ==========================================
-// 5. SORU EKRANI, COMBO & MASCOT REAKSİYONLARI
+// 6. SORU EKRANI, COMBO & MASCOT REAKSİYONLARI
 // ==========================================
 
 function openQuizScreen() {
@@ -431,7 +487,6 @@ function openQuizScreen() {
         catTag.style.backgroundColor = currentCategoryObj.color;
     }
 
-    // Maskot sıfırla
     const mascot = document.getElementById("mascot-reaction");
     if (mascot) {
         mascot.textContent = "🧙‍♂️";
@@ -476,7 +531,7 @@ function startQuestionTimer() {
 
         if (timer <= 0) {
             if (timerInterval) clearInterval(timerInterval);
-            handleAnswer(-1); // Zaman bitti -> yanlış
+            handleAnswer(-1);
         }
     }, 1000);
 }
@@ -492,20 +547,19 @@ function handleAnswer(selectedIdx) {
     if (currentQuestion && selectedIdx === currentQuestion.a) {
         // DOĞRU CEVAP
         playCorrectVictorySound();
+        triggerConfetti(); // Konfeti Patlatma
         if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("correct");
 
         combo++;
-        let earnedPoints = 10 * combo;
+        const earnedPoints = 10 * combo;
         score += earnedPoints;
         correctCountInRun++;
 
-        // Maskot Tepkisi (Zıplama)
         if (mascot) {
             mascot.textContent = "🥳";
             mascot.className = "mascot-anim happy";
         }
 
-        // Combo Göstergesi
         if (comboTag && combo >= 2) {
             comboTag.style.display = "block";
             comboTag.textContent = combo === 2 ? "🔥 COMBO x2!" : (combo === 3 ? "⚡ EFSANE x3!" : `🌟 DURDURULAMAZ x${combo}!`);
@@ -539,7 +593,6 @@ function handleAnswer(selectedIdx) {
         combo = 0;
         if (comboTag) comboTag.style.display = "none";
 
-        // Maskot Tepkisi (Ağlama)
         if (mascot) {
             mascot.textContent = "😭";
             mascot.className = "mascot-anim sad";
@@ -581,7 +634,7 @@ function goToNextQuestion() {
 }
 
 // ==========================================
-// 6. JOKERLER
+// 7. JOKERLER
 // ==========================================
 
 function useFiftyFifty() {
@@ -615,7 +668,7 @@ function useExtraTime() {
 }
 
 // ==========================================
-// 7. OYUN BİTTİ & YENİDEN BAŞLAT
+// 8. OYUN BİTTİ & YENİDEN BAŞLAT
 // ==========================================
 
 function showGameOver() {
@@ -649,7 +702,7 @@ function restartGame() {
 }
 
 // ==========================================
-// 8. SORU FABRİKASI (ÖNERME & OYLAMA)
+// 9. SORU FABRİKASI (ÖNERME & OYLAMA)
 // ==========================================
 
 function renderVoteCard() {
@@ -677,7 +730,7 @@ function submitCustomQuestion() {
     questionBank[cat].push({
         q: q,
         o: [correct, w1, w2, w3].sort(() => Math.random() - 0.5),
-        a: 0 // doğru cevap array içinde yerleşti
+        a: 0
     });
 
     document.getElementById("custom-q-text").value = "";
@@ -686,11 +739,12 @@ function submitCustomQuestion() {
     document.getElementById("custom-q-w2").value = "";
     document.getElementById("custom-q-w3").value = "";
 
-    alert("🎉 Sorunuz havuza başarıyla eklendi! Diğer oyuncular artık bu soruyu çözebilir.");
+    triggerConfetti();
+    alert("🎉 Sorunuz havuza başarıyla eklendi! Artık bu soru da yarışmada gelebilir.");
 }
 
 // ==========================================
-// 9. UNVANLAR & AYARLAR
+// 10. UNVANLAR & AYARLAR
 // ==========================================
 
 function checkTitleUnlocks() {
@@ -779,7 +833,7 @@ function saveSettings() {
 }
 
 // ==========================================
-// 10. BAŞLATICI & EVENT LISTENERS
+// 11. BAŞLATICI & OLAY DİNLEYİCİLERİ
 // ==========================================
 
 function initApp() {
@@ -792,7 +846,6 @@ function initApp() {
     checkDailyStreak();
     renderQuestsUI();
 
-    // Ana Menü Butonları
     const btnPlay = document.getElementById("btn-menu-play");
     const btnQuests = document.getElementById("btn-menu-quests");
     const btnFactory = document.getElementById("btn-menu-factory");
@@ -818,11 +871,9 @@ function initApp() {
     if (btnAbout) btnAbout.addEventListener("click", () => openModal("modal-about"));
     if (btnProfilePill) btnProfilePill.addEventListener("click", openSettingsModal);
 
-    // Sandık Aç Butonu
     const btnClaimChest = document.getElementById("btn-claim-chest");
     if (btnClaimChest) btnClaimChest.addEventListener("click", claimChestReward);
 
-    // Soru Fabrikası Tab Değişimi
     const tabSuggest = document.getElementById("tab-suggest");
     const tabVote = document.getElementById("tab-vote");
     const areaSuggest = document.getElementById("factory-suggest-area");
@@ -860,7 +911,6 @@ function initApp() {
         alert("👎 Oyunuz kaydedildi!");
     });
 
-    // Giriş Butonları
     const btnGoogle = document.getElementById("btn-auth-google");
     const btnApple = document.getElementById("btn-auth-apple");
     const btnGuest = document.getElementById("btn-auth-guest");
@@ -868,7 +918,6 @@ function initApp() {
     if (btnApple) btnApple.addEventListener("click", () => handleAuthSelection("Apple"));
     if (btnGuest) btnGuest.addEventListener("click", () => handleAuthSelection("Misafir"));
 
-    // Çark ve Oyun Butonları
     const btnBackHome = document.getElementById("btn-back-to-menu");
     const btnGoHome = document.getElementById("btn-go-home");
     const spinBtn = document.getElementById("spin-button");
@@ -887,7 +936,6 @@ function initApp() {
     if (timeBtn) timeBtn.addEventListener("click", useExtraTime);
     if (restartBtn) restartBtn.addEventListener("click", restartGame);
 
-    // Soru Şıkları
     document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const idxStr = btn.getAttribute("data-idx");
@@ -895,7 +943,6 @@ function initApp() {
         });
     });
 
-    // Kategori Seçim Modalı
     document.querySelectorAll("#modal-category-picker .cat-choice-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const cat = btn.getAttribute("data-cat");
