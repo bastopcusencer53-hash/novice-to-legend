@@ -13,6 +13,7 @@
 
     <canvas id="confetti-canvas"></canvas>
 
+    <!-- 1. YÜKLEME EKRANI (SPLASH) -->
     <div id="splash-screen" class="splash-container">
         <div class="splash-bg-decor"></div>
         <div class="splash-content">
@@ -27,13 +28,19 @@
         </div>
     </div>
 
+    <!-- 2. ANA OYUN ÇERÇEVESİ -->
     <div class="game-wrapper" id="main-game" style="display: none;">
         
+        <!-- ================= EKRAN 1: ANA MENÜ / LOBİ ================= -->
         <section id="screen-menu" class="screen-box">
             <div class="menu-header">
                 <div class="user-pill" id="menu-profile-pill">
                     <span id="user-avatar">🧙‍♂️</span>
                     <span id="user-name">Maceracı</span>
+                </div>
+                <div class="streak-pill" id="menu-streak-pill">
+                    <span id="streak-icon">🔥</span>
+                    <span id="streak-count-text">1 Gün</span>
                 </div>
                 <div class="title-badge" id="menu-title-badge">[Çaylak]</div>
             </div>
@@ -44,10 +51,21 @@
                 <p class="game-brand-desc">Bilginin Gücüyle Efsane Ol</p>
             </div>
 
+            <!-- ALT ALTA MENÜ KARTLARI -->
             <div class="menu-cards-container">
                 <button class="menu-btn play-btn" id="btn-menu-play">
                     <span class="btn-icon">🎮</span>
                     <span class="btn-text">OYUNA BAŞLA</span>
+                </button>
+
+                <button class="menu-btn" id="btn-menu-quests">
+                    <span class="btn-icon">🎁</span>
+                    <span class="btn-text">Günlük Görevler & Sandık</span>
+                </button>
+
+                <button class="menu-btn" id="btn-menu-factory">
+                    <span class="btn-icon">🏭</span>
+                    <span class="btn-text">Soru Fabrikası (Öner/Oyla)</span>
                 </button>
 
                 <button class="menu-btn" id="btn-menu-titles">
@@ -66,8 +84,9 @@
                 </button>
             </div>
 
+            <!-- ENTEGRE GİRİŞ BUTONLARI -->
             <div class="menu-auth-section">
-                <span class="auth-title-text" id="auth-status-label">Giriş Yap: (Misafir)</span>
+                <span class="auth-title-text" id="auth-status-label">Giriş Durumu: (Misafir)</span>
                 <div class="auth-buttons-row">
                     <button class="auth-choice-btn google-auth" id="btn-auth-google">🌐 Google</button>
                     <button class="auth-choice-btn apple-auth" id="btn-auth-apple">🍏 Apple</button>
@@ -76,6 +95,7 @@
             </div>
         </section>
 
+        <!-- ================= EKRAN 2: ÇARK EKRANI ================= -->
         <section id="screen-wheel" class="screen-box" style="display: none;">
             <div class="game-header">
                 <button class="icon-round-btn" id="btn-back-to-menu" title="Menüye Dön">🏠</button>
@@ -115,9 +135,17 @@
             </div>
         </section>
 
+        <!-- ================= EKRAN 3: SORU EKRANI ================= -->
         <section id="screen-quiz" class="screen-box" style="display: none;">
             <div class="quiz-top-bar">
                 <span id="quiz-category-tag" class="category-pill">Kategori</span>
+                
+                <!-- MASCOT & COMBO BADGE -->
+                <div class="quiz-reaction-box">
+                    <span id="mascot-reaction" class="mascot-anim">🧙‍♂️</span>
+                    <div id="combo-popup" class="combo-tag" style="display: none;">COMBO x2!</div>
+                </div>
+
                 <div class="timer-badge">⏳ <span id="quiz-timer">15</span>s</div>
             </div>
 
@@ -144,6 +172,7 @@
             <button id="quiz-next-button" class="btn-next" style="display: none;">DEVAM ET ➔</button>
         </section>
 
+        <!-- ================= EKRAN 4: OYUN BİTTİ ================= -->
         <section id="screen-gameover" class="screen-box" style="display: none;">
             <div class="gameover-card">
                 <div class="gameover-icon">💀</div>
@@ -164,6 +193,67 @@
 
     </div>
 
+    <!-- MODAL 1: GÜNLÜK GÖREVLER & SANDIK -->
+    <div id="modal-quests" class="modal-overlay">
+        <div class="modal-box">
+            <h2>🎁 Günlük Görevler & Sandık</h2>
+            <p>Görevleri tamamla, efsanevi ödül sandığını aç!</p>
+            
+            <div class="chest-area">
+                <div id="chest-icon" class="chest-box">📦</div>
+                <div id="chest-status-text" class="chest-status">3 Görevden 0/3 Tamamlandı</div>
+                <button id="btn-claim-chest" class="btn-claim locked">Sandığı Aç</button>
+            </div>
+
+            <div class="quests-list" id="quests-container"></div>
+            <button class="modal-btn-cancel" id="btn-close-quests">Kapat</button>
+        </div>
+    </div>
+
+    <!-- MODAL 2: SORU FABRİKASI (ÖNER & OYLA) -->
+    <div id="modal-factory" class="modal-overlay">
+        <div class="modal-box">
+            <h2>🏭 Soru Fabrikası</h2>
+            <div class="factory-tabs">
+                <button class="tab-btn active" id="tab-suggest">Soru Öner</button>
+                <button class="tab-btn" id="tab-vote">Soruları Oyla</button>
+            </div>
+
+            <!-- Tab A: Soru Öner -->
+            <div id="factory-suggest-area" class="factory-panel">
+                <input type="text" id="custom-q-text" class="factory-input" placeholder="Sorunuzu buraya yazın...">
+                <select id="custom-q-cat" class="factory-input">
+                    <option value="Sanat">🎨 Sanat</option>
+                    <option value="Coğrafya">🌍 Coğrafya</option>
+                    <option value="Tarih">📜 Tarih</option>
+                    <option value="Bilim">🔬 Bilim</option>
+                    <option value="Spor">⚽ Spor</option>
+                    <option value="Genel Kültür">💡 Genel Kültür</option>
+                </select>
+                <input type="text" id="custom-q-correct" class="factory-input correct-field" placeholder="✅ Doğru Cevap">
+                <input type="text" id="custom-q-w1" class="factory-input" placeholder="❌ Yanlış Şık 1">
+                <input type="text" id="custom-q-w2" class="factory-input" placeholder="❌ Yanlış Şık 2">
+                <input type="text" id="custom-q-w3" class="factory-input" placeholder="❌ Yanlış Şık 3">
+                <button id="btn-submit-question" class="modal-btn-confirm">Topluluğa Gönder 🚀</button>
+            </div>
+
+            <!-- Tab B: Soru Oyla -->
+            <div id="factory-vote-area" class="factory-panel" style="display: none;">
+                <div class="vote-card" id="vote-card-content">
+                    <span id="vote-cat-tag" class="category-pill" style="background:#ff9f43;">Kategori</span>
+                    <p id="vote-q-text" class="vote-question-text">Oylanacak soru yükleniyor...</p>
+                    <div class="vote-actions">
+                        <button class="vote-btn thumbs-up" id="btn-vote-up">👍 Harika (Beğen)</button>
+                        <button class="vote-btn thumbs-down" id="btn-vote-down">👎 Beğenmedim</button>
+                    </div>
+                </div>
+            </div>
+
+            <button class="modal-btn-cancel" id="btn-close-factory">Kapat</button>
+        </div>
+    </div>
+
+    <!-- MODAL 3: KATEGORİ SEÇ -->
     <div id="modal-category-picker" class="modal-overlay">
         <div class="modal-box">
             <h2>Kategori Seç Jokeri</h2>
@@ -180,6 +270,7 @@
         </div>
     </div>
 
+    <!-- MODAL 4: UNVANLAR -->
     <div id="modal-titles" class="modal-overlay">
         <div class="modal-box">
             <h2>📜 Unvan Koleksiyonu</h2>
@@ -189,6 +280,7 @@
         </div>
     </div>
 
+    <!-- MODAL 5: AYARLAR -->
     <div id="modal-settings" class="modal-overlay">
         <div class="modal-box">
             <h2>⚙️ Ayarlar & Profil</h2>
@@ -200,6 +292,7 @@
         </div>
     </div>
 
+    <!-- MODAL 6: HAKKINDA -->
     <div id="modal-about" class="modal-overlay">
         <div class="modal-box">
             <h2>ℹ️ Nasıl Oynanır?</h2>
@@ -207,8 +300,8 @@
                 <p>🎯 <strong>Çarkı Çevir:</strong> 6 farklı kategoriden biri gelir.</p>
                 <p>⏳ <strong>15 Saniye:</strong> Her soru için süren vardır.</p>
                 <p>❤️ <strong>3 Can:</strong> Yanlış yaparsan bir canın eksilir.</p>
-                <p>✨ <strong>Jokerler:</strong> %50 Eleme ve +10 Saniye jokerlerini kullanabilirsin.</p>
-                <p>📜 <strong>Unvanlar:</strong> Doğrularını artırarak efsaneye dönüş!</p>
+                <p>🔥 <strong>Combo Serisi:</strong> Hızlı ve peş peşe bildikçe combo puanı katlanır!</p>
+                <p>🎁 <strong>Görevler:</strong> Günlük görevleri yapıp sandığı aç!</p>
             </div>
             <button class="modal-btn-confirm" id="btn-close-about">Anladım</button>
         </div>

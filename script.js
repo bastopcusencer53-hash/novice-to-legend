@@ -56,6 +56,14 @@ const questionBank = {
     ]
 };
 
+// Oylanacak Topluluk Soruları
+let communityQuestions = [
+    { cat: "Bilim", q: "Ay'a ilk ayak basan astronot kimdir?", correct: "Neil Armstrong" },
+    { cat: "Tarih", q: "Çanakkale Zaferi hangi yılda kazanılmıştır?", correct: "1915" },
+    { cat: "Spor", q: "Basketbolda serbest atış kaç puandır?", correct: "1 Puan" }
+];
+let currentVoteIdx = 0;
+
 const titlesData = [
     { id: "t0", name: "[Çaylak]", req: 0, cat: "", desc: "Maceraya ilk adım" },
     { id: "t1", name: "[Tarih Meraklısı]", req: 3, cat: "Tarih", desc: "3 Tarih sorusu bil" },
@@ -66,7 +74,21 @@ const titlesData = [
     { id: "t6", name: "[Bilge Üstat]", req: 10, cat: "all", desc: "Toplam 10 doğruya ulaş" }
 ];
 
+// Günlük Görevler Veritabanı
+let dailyQuests = JSON.parse(localStorage.getItem("ntl_daily_quests")) || [
+    { id: "q1", text: "5 Soru Doğru Bil", target: 5, current: 0, done: false },
+    { id: "q2", text: "2 Tarih Sorusu Bil", target: 2, current: 0, cat: "Tarih", done: false },
+    { id: "q3", text: "1 Oyun Tamamla", target: 1, current: 0, done: false }
+];
+let chestClaimed = JSON.parse(localStorage.getItem("ntl_chest_claimed")) || false;
+
+// Streak & Tarih Takibi
+let streakCount = Number(localStorage.getItem("ntl_streak_count")) || 1;
+let lastLoginDate = localStorage.getItem("ntl_last_login") || "";
+
+// Oyun Durum Değişkenleri
 let score = 0;
+let combo = 0;
 let correctCountInRun = 0;
 let lives = 3;
 let highScore = Number(localStorage.getItem("ntl_highscore")) || 0;
@@ -88,7 +110,7 @@ let hasExtraTime = true;
 let hasPickCategoryUsed = false;
 
 // ==========================================
-// SES MOTORU
+// SES MOTORU (TRIVIA CRACK AKORLARI)
 // ==========================================
 let audioCtx = null;
 
@@ -131,7 +153,7 @@ function playCorrectVictorySound() {
             const gain = ctx.createGain();
             osc.type = "sine";
             osc.frequency.value = freq;
-            const startTime = ctx.currentTime + idx * 0.09;
+            const startTime = ctx.currentTime + idx * 0.08;
             gain.gain.setValueAtTime(0, startTime);
             gain.gain.linearRampToValueAtTime(0.18, startTime + 0.02);
             gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
@@ -172,7 +194,105 @@ function playWrongSound() {
 }
 
 // ==========================================
-// 2. ARAYÜZ YARDIMCILARI
+// 2. STREAK & GÖREV MEKANİZMASI
+// ==========================================
+
+function checkDailyStreak() {
+    const todayStr = new Date().toDateString();
+    if (lastLoginDate !== todayStr) {
+        if (lastLoginDate) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            if (lastLoginDate === yesterday.toDateString()) {
+                streakCount++;
+            } else {
+                streakCount = 1;
+            }
+        } else {
+            streakCount = 1;
+        }
+        lastLoginDate = todayStr;
+        localStorage.setItem("ntl_streak_count", String(streakCount));
+        localStorage.setItem("ntl_last_login", lastLoginDate);
+    }
+    const streakEl = document.getElementById("streak-count-text");
+    if (streakEl) streakEl.textContent = `${streakCount} Gün`;
+}
+
+function updateQuestProgress(type, count = 1, cat = null) {
+    let changed = false;
+    dailyQuests.forEach(q => {
+        if (!q.done) {
+            if (type === "correct" && !q.cat) {
+                q.current = Math.min(q.target, q.current + count);
+                changed = true;
+            } else if (type === "cat_correct" && q.cat === cat) {
+                q.current = Math.min(q.target, q.current + count);
+                changed = true;
+            } else if (type === "game_finish" && q.id === "q3") {
+                q.current = Math.min(q.target, q.current + count);
+                changed = true;
+            }
+            if (q.current >= q.target) q.done = true;
+        }
+    });
+    if (changed) {
+        localStorage.setItem("ntl_daily_quests", JSON.stringify(dailyQuests));
+        renderQuestsUI();
+    }
+}
+
+function renderQuestsUI() {
+    const container = document.getElementById("quests-container");
+    if (!container) return;
+    container.innerHTML = "";
+
+    let doneCount = 0;
+    dailyQuests.forEach(q => {
+        if (q.done) doneCount++;
+        const item = document.createElement("div");
+        item.className = `quest-item ${q.done ? 'done' : ''}`;
+        item.innerHTML = `
+            <span>${q.text} (${q.current}/${q.target})</span>
+            <span>${q.done ? '✅ Tamam' : '⏳ Devam'}</span>
+        `;
+        container.appendChild(item);
+    });
+
+    const statusText = document.getElementById("chest-status-text");
+    const claimBtn = document.getElementById("btn-claim-chest");
+    if (statusText) statusText.textContent = `3 Görevden ${doneCount}/3 Tamamlandı`;
+
+    if (claimBtn) {
+        if (chestClaimed) {
+            claimBtn.className = "btn-claim locked";
+            claimBtn.textContent = "Sandık Açıldı (Yarın Gel)";
+        } else if (doneCount >= 3) {
+            claimBtn.className = "btn-claim";
+            claimBtn.textContent = "🎁 Sandığı Aç!";
+        } else {
+            claimBtn.className = "btn-claim locked";
+            claimBtn.textContent = "Kilitli (Görevleri Bitir)";
+        }
+    }
+}
+
+function claimChestReward() {
+    const doneCount = dailyQuests.filter(q => q.done).length;
+    if (doneCount >= 3 && !chestClaimed) {
+        chestClaimed = true;
+        localStorage.setItem("ntl_chest_claimed", JSON.stringify(true));
+        lives = 3;
+        hasFiftyFifty = true;
+        hasExtraTime = true;
+        updateLivesUI();
+        renderQuestsUI();
+        alert("🎉 TEBRİKLER! Sandıktan 3 Can ve ekstra Jokerler kazandın!");
+    }
+}
+
+// ==========================================
+// 3. ARAYÜZ YARDIMCILARI
 // ==========================================
 
 function openModal(id) {
@@ -229,7 +349,7 @@ function switchScreen(screenId) {
 }
 
 // ==========================================
-// 3. ÇARK MEKANİZMASI
+// 4. ÇARK MEKANİZMASI
 // ==========================================
 
 function spinToTargetIndex(index) {
@@ -299,7 +419,7 @@ function spinToCategory(catName) {
 }
 
 // ==========================================
-// 4. SORU EKRANI
+// 5. SORU EKRANI, COMBO & MASCOT REAKSİYONLARI
 // ==========================================
 
 function openQuizScreen() {
@@ -309,6 +429,13 @@ function openQuizScreen() {
     if (catTag && currentCategoryObj) {
         catTag.textContent = currentCategoryObj.name;
         catTag.style.backgroundColor = currentCategoryObj.color;
+    }
+
+    // Maskot sıfırla
+    const mascot = document.getElementById("mascot-reaction");
+    if (mascot) {
+        mascot.textContent = "🧙‍♂️";
+        mascot.className = "mascot-anim";
     }
 
     if (currentCategoryObj) {
@@ -349,9 +476,7 @@ function startQuestionTimer() {
 
         if (timer <= 0) {
             if (timerInterval) clearInterval(timerInterval);
-            playWrongSound();
-            loseLife();
-            revealCorrectAnswer();
+            handleAnswer(-1); // Zaman bitti -> yanlış
         }
     }, 1000);
 }
@@ -361,11 +486,31 @@ function handleAnswer(selectedIdx) {
     const optButtons = document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn");
     optButtons.forEach(btn => btn.setAttribute("disabled", "true"));
 
+    const mascot = document.getElementById("mascot-reaction");
+    const comboTag = document.getElementById("combo-popup");
+
     if (currentQuestion && selectedIdx === currentQuestion.a) {
+        // DOĞRU CEVAP
         playCorrectVictorySound();
         if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("correct");
-        score += 10;
+
+        combo++;
+        let earnedPoints = 10 * combo;
+        score += earnedPoints;
         correctCountInRun++;
+
+        // Maskot Tepkisi (Zıplama)
+        if (mascot) {
+            mascot.textContent = "🥳";
+            mascot.className = "mascot-anim happy";
+        }
+
+        // Combo Göstergesi
+        if (comboTag && combo >= 2) {
+            comboTag.style.display = "block";
+            comboTag.textContent = combo === 2 ? "🔥 COMBO x2!" : (combo === 3 ? "⚡ EFSANE x3!" : `🌟 DURDURULAMAZ x${combo}!`);
+        }
+
         const scoreEl = document.getElementById("display-score");
         if (scoreEl) scoreEl.textContent = String(score);
 
@@ -379,15 +524,30 @@ function handleAnswer(selectedIdx) {
         if (currentCategoryObj) {
             categoryProgress[currentCategoryObj.name] = (categoryProgress[currentCategoryObj.name] || 0) + 1;
             localStorage.setItem("ntl_cat_prog", JSON.stringify(categoryProgress));
+            updateQuestProgress("cat_correct", 1, currentCategoryObj.name);
         }
+
+        updateQuestProgress("correct", 1);
         checkTitleUnlocks();
         updatePickerButtonUI();
 
         const nextBtn = document.getElementById("quiz-next-button");
         if (nextBtn) nextBtn.style.display = "block";
     } else {
+        // YANLIŞ CEVAP
         playWrongSound();
-        if (optButtons[selectedIdx]) optButtons[selectedIdx].classList.add("wrong");
+        combo = 0;
+        if (comboTag) comboTag.style.display = "none";
+
+        // Maskot Tepkisi (Ağlama)
+        if (mascot) {
+            mascot.textContent = "😭";
+            mascot.className = "mascot-anim sad";
+        }
+
+        if (selectedIdx >= 0 && optButtons[selectedIdx]) {
+            optButtons[selectedIdx].classList.add("wrong");
+        }
         revealCorrectAnswer();
         loseLife();
     }
@@ -409,16 +569,19 @@ function loseLife() {
     lives--;
     updateLivesUI();
     if (lives <= 0) {
+        updateQuestProgress("game_finish", 1);
         setTimeout(showGameOver, 1200);
     }
 }
 
 function goToNextQuestion() {
+    const comboTag = document.getElementById("combo-popup");
+    if (comboTag) comboTag.style.display = "none";
     switchScreen("screen-wheel");
 }
 
 // ==========================================
-// 5. JOKERLER
+// 6. JOKERLER
 // ==========================================
 
 function useFiftyFifty() {
@@ -452,7 +615,7 @@ function useExtraTime() {
 }
 
 // ==========================================
-// 6. OYUN BİTTİ & YENİDEN BAŞLAT
+// 7. OYUN BİTTİ & YENİDEN BAŞLAT
 // ==========================================
 
 function showGameOver() {
@@ -465,6 +628,7 @@ function showGameOver() {
 
 function restartGame() {
     score = 0;
+    combo = 0;
     correctCountInRun = 0;
     lives = 3;
     hasFiftyFifty = true;
@@ -485,7 +649,48 @@ function restartGame() {
 }
 
 // ==========================================
-// 7. UNVANLAR & AYARLAR
+// 8. SORU FABRİKASI (ÖNERME & OYLAMA)
+// ==========================================
+
+function renderVoteCard() {
+    if (communityQuestions.length === 0) return;
+    const item = communityQuestions[currentVoteIdx % communityQuestions.length];
+    const catTag = document.getElementById("vote-cat-tag");
+    const qText = document.getElementById("vote-q-text");
+    if (catTag) catTag.textContent = item.cat;
+    if (qText) qText.textContent = `${item.q} (Cevap: ${item.correct})`;
+}
+
+function submitCustomQuestion() {
+    const q = document.getElementById("custom-q-text").value.trim();
+    const cat = document.getElementById("custom-q-cat").value;
+    const correct = document.getElementById("custom-q-correct").value.trim();
+    const w1 = document.getElementById("custom-q-w1").value.trim();
+    const w2 = document.getElementById("custom-q-w2").value.trim();
+    const w3 = document.getElementById("custom-q-w3").value.trim();
+
+    if (!q || !correct || !w1 || !w2 || !w3) {
+        alert("Lütfen tüm alanları ve şıkları doldurun!");
+        return;
+    }
+
+    questionBank[cat].push({
+        q: q,
+        o: [correct, w1, w2, w3].sort(() => Math.random() - 0.5),
+        a: 0 // doğru cevap array içinde yerleşti
+    });
+
+    document.getElementById("custom-q-text").value = "";
+    document.getElementById("custom-q-correct").value = "";
+    document.getElementById("custom-q-w1").value = "";
+    document.getElementById("custom-q-w2").value = "";
+    document.getElementById("custom-q-w3").value = "";
+
+    alert("🎉 Sorunuz havuza başarıyla eklendi! Diğer oyuncular artık bu soruyu çözebilir.");
+}
+
+// ==========================================
+// 9. UNVANLAR & AYARLAR
 // ==========================================
 
 function checkTitleUnlocks() {
@@ -574,7 +779,7 @@ function saveSettings() {
 }
 
 // ==========================================
-// 8. BAŞLATICI & AÇILIŞ KAPATICI
+// 10. BAŞLATICI & EVENT LISTENERS
 // ==========================================
 
 function initApp() {
@@ -584,8 +789,13 @@ function initApp() {
     if (unEl) unEl.textContent = userName;
     updateBadgeUI();
     updateAuthUI();
+    checkDailyStreak();
+    renderQuestsUI();
 
+    // Ana Menü Butonları
     const btnPlay = document.getElementById("btn-menu-play");
+    const btnQuests = document.getElementById("btn-menu-quests");
+    const btnFactory = document.getElementById("btn-menu-factory");
     const btnTitles = document.getElementById("btn-menu-titles");
     const btnSettings = document.getElementById("btn-menu-settings");
     const btnAbout = document.getElementById("btn-menu-about");
@@ -595,11 +805,62 @@ function initApp() {
         restartGame();
         switchScreen("screen-wheel");
     });
+    if (btnQuests) btnQuests.addEventListener("click", () => {
+        renderQuestsUI();
+        openModal("modal-quests");
+    });
+    if (btnFactory) btnFactory.addEventListener("click", () => {
+        renderVoteCard();
+        openModal("modal-factory");
+    });
     if (btnTitles) btnTitles.addEventListener("click", openTitlesModal);
     if (btnSettings) btnSettings.addEventListener("click", openSettingsModal);
     if (btnAbout) btnAbout.addEventListener("click", () => openModal("modal-about"));
     if (btnProfilePill) btnProfilePill.addEventListener("click", openSettingsModal);
 
+    // Sandık Aç Butonu
+    const btnClaimChest = document.getElementById("btn-claim-chest");
+    if (btnClaimChest) btnClaimChest.addEventListener("click", claimChestReward);
+
+    // Soru Fabrikası Tab Değişimi
+    const tabSuggest = document.getElementById("tab-suggest");
+    const tabVote = document.getElementById("tab-vote");
+    const areaSuggest = document.getElementById("factory-suggest-area");
+    const areaVote = document.getElementById("factory-vote-area");
+
+    if (tabSuggest && tabVote && areaSuggest && areaVote) {
+        tabSuggest.addEventListener("click", () => {
+            tabSuggest.classList.add("active");
+            tabVote.classList.remove("active");
+            areaSuggest.style.display = "flex";
+            areaVote.style.display = "none";
+        });
+        tabVote.addEventListener("click", () => {
+            tabVote.classList.add("active");
+            tabSuggest.classList.remove("active");
+            areaSuggest.style.display = "none";
+            areaVote.style.display = "flex";
+            renderVoteCard();
+        });
+    }
+
+    const btnSubmitQ = document.getElementById("btn-submit-question");
+    if (btnSubmitQ) btnSubmitQ.addEventListener("click", submitCustomQuestion);
+
+    const btnVoteUp = document.getElementById("btn-vote-up");
+    const btnVoteDown = document.getElementById("btn-vote-down");
+    if (btnVoteUp) btnVoteUp.addEventListener("click", () => {
+        currentVoteIdx++;
+        renderVoteCard();
+        alert("👍 Oyunuz kaydedildi!");
+    });
+    if (btnVoteDown) btnVoteDown.addEventListener("click", () => {
+        currentVoteIdx++;
+        renderVoteCard();
+        alert("👎 Oyunuz kaydedildi!");
+    });
+
+    // Giriş Butonları
     const btnGoogle = document.getElementById("btn-auth-google");
     const btnApple = document.getElementById("btn-auth-apple");
     const btnGuest = document.getElementById("btn-auth-guest");
@@ -607,6 +868,7 @@ function initApp() {
     if (btnApple) btnApple.addEventListener("click", () => handleAuthSelection("Apple"));
     if (btnGuest) btnGuest.addEventListener("click", () => handleAuthSelection("Misafir"));
 
+    // Çark ve Oyun Butonları
     const btnBackHome = document.getElementById("btn-back-to-menu");
     const btnGoHome = document.getElementById("btn-go-home");
     const spinBtn = document.getElementById("spin-button");
@@ -625,6 +887,7 @@ function initApp() {
     if (timeBtn) timeBtn.addEventListener("click", useExtraTime);
     if (restartBtn) restartBtn.addEventListener("click", restartGame);
 
+    // Soru Şıkları
     document.querySelectorAll("#quiz-options-wrapper .quiz-opt-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const idxStr = btn.getAttribute("data-idx");
@@ -632,6 +895,7 @@ function initApp() {
         });
     });
 
+    // Kategori Seçim Modalı
     document.querySelectorAll("#modal-category-picker .cat-choice-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             const cat = btn.getAttribute("data-cat");
@@ -648,11 +912,16 @@ function initApp() {
     const closeAboutModal = document.getElementById("btn-close-about");
     if (closeAboutModal) closeAboutModal.addEventListener("click", () => closeModal("modal-about"));
 
+    const closeQuestsModal = document.getElementById("btn-close-quests");
+    if (closeQuestsModal) closeQuestsModal.addEventListener("click", () => closeModal("modal-quests"));
+
+    const closeFactoryModal = document.getElementById("btn-close-factory");
+    if (closeFactoryModal) closeFactoryModal.addEventListener("click", () => closeModal("modal-factory"));
+
     const saveSettingsBtn = document.getElementById("btn-save-settings");
     if (saveSettingsBtn) saveSettingsBtn.addEventListener("click", saveSettings);
 }
 
-// Açılış ekranını doğrudan ve kesin olarak kapatma fonksiyonu
 function dismissSplashScreen() {
     const splash = document.getElementById("splash-screen");
     const mainGame = document.getElementById("main-game");
